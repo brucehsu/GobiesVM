@@ -1,0 +1,297 @@
+package main
+
+# parser declaration
+
+YYSTYPE AST
+
+type Leg Peg {
+
+}
+
+%{
+ 
+var traverse_level int = 0
+
+func Traverse(root *AST) {
+  for i:=0; i<traverse_level; i++ {
+    fmt.Printf("  ")
+  }
+  traverse_level += 1
+  fmt.Printf("%s: %+v\n", node_type_str[root.Type], root)
+  
+  root_head := root.head
+
+  for idx, _ := range root.args {
+    if root.args[idx] != nil {
+      Traverse(root.args[idx])      
+    }
+  }
+
+  traverse_level -= 1
+
+  for root_head != nil {
+    Traverse(root_head)
+    root_head = root_head.next
+  }
+
+}
+
+var currentLine int = 0
+var rootAST *AST
+var parseStr []string
+
+%}
+
+Root      = s:Stmts EOF                     { rootAST = MakeASTNode(NODE_ROOT, s, nil, nil, currentLine) }
+
+Stmts     = SEP*
+            - head:Stmt Comment?            { //Stmts:0}
+            ( SEP - tail:Stmt Comment?      { head.PushBack(tail) //Stmts:1 }
+            | SEP - Comment
+            )* SEP?                         { $$ = head //Stmts:2}
+          | SEP+                            { $$ = nil //Stmts:3}
+
+OptStmts  = Stmts
+          | - SEP?                          { $$ = nil //OptStmts:0}
+
+Stmt      = While
+          | Until
+          | If
+          | Unless
+          | Def
+          | Class
+          | Module
+          | Expr
+
+Expr      = Assign
+          | AsgnCall
+          | UnaryOp
+          | BinOp
+          | SpecCall
+          | Call
+          | Range
+          | Yield
+          | Return
+          | Break
+          | Value
+
+Comment   = - '#' (!EOL .)*
+
+Call      = { rcv = nil; block = nil;//Call:0 }                               
+            ( rcv:Value '.'
+            )? ( rmsg:Message '.'           { currentAST := MakeASTNode(NODE_SEND, rcv, rmsg, nil, currentLine); rcv = currentAST; //Call:1 }
+               )* msg:Message
+                  - block:Block?            { currentAST := MakeASTNode(NODE_SEND, rcv, msg, block, currentLine); $$ = currentAST; //Call:2 }
+
+# TODO refactor head part w/ Call maybe eh?
+AsgnCall   =                                { rcv = nil //AsgnCall:0 }
+            ( rcv:Value '.'
+            )? ( rmsg:Message '.'           { currentAST := MakeASTNode(NODE_SEND,rcv, rmsg, nil, currentLine); rcv = currentAST; //AsgnCall:1 }
+               )* msg:ID - asg:ASSIGN
+                  - val:Stmt                { //AsgnCall:2 TODO}
+
+Receiver  = { rcv = nil //Receiver:0} (                               
+              rcv:Call { $$ = rcv //Receiver:1}
+            | rcv:Value { $$ = rcv //Receiver:2}
+            )                              
+
+SpecCall  = rcv:Receiver '[' args:Args ']'  
+            - ASSIGN - val:Stmt             { currentAST :=  MakeASTNode(NODE_ARG, val, nil, nil, currentLine); args.PushBack(currentAST); methodAST :=  &AST{Type: NODE_ASTVAL}; methodAST.value.str = "[]="; msgAST := MakeASTNode(NODE_MSG, methodAST, args, nil, currentLine); currentAST = MakeASTNode(NODE_SEND, rcv, msgAST, nil, currentLine); $$ = currentAST; //SpecCall:0 }
+          | rcv:Receiver '[' args:Args ']'  { methodAST :=  &AST{Type: NODE_ASTVAL}; methodAST.value.str = "[]"; msgAST := MakeASTNode(NODE_MSG, methodAST, args, nil, currentLine); currentAST := MakeASTNode(NODE_SEND, rcv, msgAST, nil, currentLine); $$ = currentAST; //SpecCall:1 }
+
+BinOp     = ( rcv:SpecCall | rcv:Receiver )
+            -
+            (
+              '&&' - arg:Expr               { currentAST := MakeASTNode(NODE_AND, rcv, arg, nil, currentLine); $$ = currentAST; //BinOp:0 && }
+            | '||' - arg:Expr               { currentAST := MakeASTNode(NODE_OR, rcv, arg, nil, currentLine); $$ = currentAST;  //BinOp:1 || }
+            | '+' - arg:Expr                { currentAST := MakeASTNode(NODE_ADD, rcv, arg, nil, currentLine); $$ = currentAST;  //BinOp:2 + }
+            | '-' - arg:Expr                { currentAST := MakeASTNode(NODE_SUB, rcv, arg, nil, currentLine); $$ = currentAST;  //BinOp:3 - }
+            | '<' - arg:Expr                { currentAST := MakeASTNode(NODE_LT, rcv, arg, nil, currentLine); $$ = currentAST;  //BinOp:4 < }
+            | op:BINOP - arg:Expr           { argAST := MakeASTNode(NODE_ARG, arg, nil, nil, currentLine); msgAST := MakeASTNode(NODE_MSG, op, argAST, nil, currentLine); currentAST := MakeASTNode(NODE_SEND, rcv, msgAST, nil, currentLine); $$ = currentAST; //BinOp:5 BINOP }
+            ) 
+
+UnaryOp   = '-' rcv:Expr                    { currentAST := MakeASTNode(NODE_NEG, rcv, nil, nil, currentLine); $$ = currentAST; //UnaryOp:0 NODE_NEG - }
+          | '!' rcv:Expr                    { currentAST := MakeASTNode(NODE_NOT, rcv, nil, nil, currentLine); $$ = currentAST; //UnaryOp:0 NODE_NOT ! }
+
+Message   = name:ID                         { args = nil //Message:0 }
+              ( '(' args:Args? ')'
+              | SPACE args:Args
+              )?                            { currentAST := MakeASTNode(NODE_MSG, name, args, nil, currentLine); $$ = currentAST; //Message:1 }
+
+Args      = - head:Expr -                   { currentAST := MakeASTNode(NODE_ARG, head, nil, nil, currentLine); head = currentAST; //Args:0 }
+            ( ',' - tail:Expr -             { head.args[0].PushBack(tail) //Args:1 }
+            )* ( ',' - '*' splat:Expr -     { //Args:2 No going to support :p}
+               )?                           { $$ = head //Args:3 }
+          # | - '*' splat:Expr -              { //Args:4 Not going to support}
+
+Block     = 'do' SEP
+              - body:OptStmts -
+            'end'                           { currentAST := MakeASTNode(NODE_BLOCK, body, nil, nil, currentLine); $$ = currentAST;  //Block:0 }
+          | 'do' - '|' params:Params '|' SEP
+              - body:OptStmts -
+            'end'                           { currentAST := MakeASTNode(NODE_BLOCK, body, params, nil, currentLine); $$ = currentAST;  //Block:1 with params }
+          # FIXME this might hang the parser and is very slow.
+          # Clash with Hash for sure.
+          #| '{' - body:OptStmts - '}'       { $$ = newASTNode(compiler.vm, NODE_BLOCK, body, 0, 0, compiler.line) }
+          #| '{' - '|' params:Params '|'
+          #  - body:OptStmts - '}'           { $$ = newASTNode(compiler.vm, NODE_BLOCK, body, params, 0, compiler.line) }
+
+Assign    = name:ID - ASSIGN - val:Stmt     { currentAST := MakeASTNode(NODE_ASSIGN, name, val, nil, currentLine); $$ = currentAST; //Assign:0 }
+          | name:CONST - ASSIGN - val:Stmt  { currentAST := MakeASTNode(NODE_SETCONST, name, val, nil, currentLine); $$ = currentAST; //Assign:1 }
+          | name:IVAR - ASSIGN - val:Stmt   { currentAST := MakeASTNode(NODE_SETIVAR, name, val, nil, currentLine); $$ = currentAST; //Assign:2 }
+          | name:CVAR - ASSIGN - val:Stmt   { currentAST := MakeASTNode(NODE_SETCVAR, name, val, nil, currentLine); $$ = currentAST; //Assign:3 }
+          | name:GLOBAL - ASSIGN - val:Stmt { currentAST := MakeASTNode(NODE_SETGLOBAL, name, val, nil, currentLine); $$ = currentAST; //Assign:4 }
+
+ While     = 'while' SPACE cond:Expr SEP
+               body:Stmts -
+             'end'                           { currentAST := MakeASTNode(NODE_WHILE, cond, body, nil, currentLine); $$ = currentAST;  //While NODE_WHILE }# 
+ 
+ Until     = 'until' SPACE cond:Expr SEP
+               body:Stmts -
+             'end'                           { currentAST := MakeASTNode(NODE_UNTIL, cond, body, nil, currentLine); $$ = currentAST;  //Until NODE_UNTIL }
+
+If        = 'if' SPACE cond:Expr SEP        { else_body = nil //If:0 else_body = 0}
+              body:Stmts -
+            else_body:Else?
+            'end'                           { currentAST := MakeASTNode(NODE_IF, cond, body, else_body, currentLine); $$ = currentAST;  //If:1 }
+          | body:Expr - 'if' - cond:Expr    { currentAST := MakeASTNode(NODE_IF, cond, body, nil, currentLine); $$ = currentAST; //If:2 No ELSE }
+
+Unless    = 'unless' SPACE cond:Expr SEP    { else_body = nil  //Unless:0 else_body = 0 }
+              body:Stmts -
+            else_body:Else?
+            'end'                           { currentAST := MakeASTNode(NODE_UNLESS, cond, body, else_body, currentLine); $$ = currentAST; //Unless:1 }
+          | body:Expr -
+              'unless' - cond:Expr          { currentAST := MakeASTNode(NODE_UNLESS, cond, body, nil, currentLine); $$ = currentAST; //Unless:2 No ELSE }
+
+Else      = 'else' SEP - body:Stmts -       { $$ = body //Else:0 }
+
+Method    = rcv:ID '.' name:METHOD          { msgAST := MakeASTNode(NODE_MSG, rcv, nil, nil, currentLine); sendAST := MakeASTNode(NODE_SEND, nil, msgAST, nil, currentLine); currentAST := MakeASTNode(NODE_METHOD, sendAST, name, nil, currentLine); $$ = currentAST; //Method:0 NODE_METHOD }
+          | rcv:Value '.' name:METHOD       { currentAST := MakeASTNode(NODE_METHOD, rcv, name, nil, currentLine); $$ = currentAST; //Method:1 }
+          | name:METHOD                     { currentAST := MakeASTNode(NODE_METHOD, nil, name, nil, currentLine); $$ = currentAST; //Method:2 Call top self }
+
+Def       = 'def' SPACE method:Method       { params = nil //Def:0 params=0}
+            (- '(' params:Params? ')')? SEP
+              body:OptStmts -
+            'end'                           { currentAST := MakeASTNode(NODE_DEF, method, params, body, currentLine); $$ = currentAST;  //Def:1 params>0}
+
+Params    = head:Param                      { //Params:0 head }
+            ( ',' tail:Param                { head.PushBack(tail) //Params:1 }
+            )*                              { $$ = head //Params:2 $$ = head }
+
+Param     = - name:ID - '=' - def:Expr      { $$ = MakeASTNode(NODE_PARAM, name, nil, def, currentLine) //Param:0 }
+          | - name:ID -                     { $$ = MakeASTNode(NODE_PARAM, name, nil, nil, currentLine)  //Param:1 }
+          | - '*' name:ID -                 { //Param:2 splat TODO}
+
+Class     = 'class' SPACE name:CONST        { //Class:0 super = 0 }
+            (- '<' - super:CONST)? SEP
+              body:OptStmts -
+            'end'                           { $$ = MakeASTNode(NODE_CLASS, name, super, body, currentLine)  //Class:1 }
+
+Module    = 'module' SPACE name:CONST SEP
+              body:OptStmts -
+            'end'                           { $$ = MakeASTNode(NODE_MODULE, name, nil, body, currentLine)  //Module:0 }
+
+Range     = s:Receiver - '..' - e:Expr      { //Range:0 TODO}
+          | s:Receiver - '...' - e:Expr     { //Range:1 TODO}
+
+Yield     = 'yield' SPACE args:AryItems     {  $$ = MakeASTNode(NODE_YIELD, args,nil,nil, currentLine)  //Yield:0 }
+          | 'yield' '(' args:AryItems ')'   { $$ = MakeASTNode(NODE_YIELD, args,nil,nil, currentLine) //Yield:1 }
+          | 'yield'                         { $$ = MakeASTNode(NODE_YIELD, nil ,nil,nil, currentLine) //Yield:2 }
+
+Return    = 'return' SPACE arg:Expr - !','  { $$ = MakeASTNode(NODE_RETURN, arg,nil,nil, currentLine) //Return:0 }
+          | 'return' '(' arg:Expr ')' - !','{ $$ = MakeASTNode(NODE_RETURN, arg,nil,nil, currentLine) //Return:1 }
+          | 'return' SPACE args:AryItems    { $$ = MakeASTNode(NODE_RETURN, MakeASTNode(NODE_ARRAY, args, nil,nil, currentLine) ,nil,nil, currentLine) //Return:2 }
+          | 'return' '(' args:AryItems ')'  { $$ = MakeASTNode(NODE_RETURN, MakeASTNode(NODE_ARRAY, args, nil,nil, currentLine) ,nil,nil, currentLine) //Return:3 }
+          | 'return'                        { $$ = MakeASTNode(NODE_RETURN, nil, nil,nil, currentLine) //Return:4 }
+
+Break     = 'break'                         { //Break:0 }
+
+Value     = v:NUMBER                        { $$ = MakeASTNode(NODE_VALUE, v, nil, nil, currentLine) //Value:0 NUMBER }
+          | v:SYMBOL                        { $$ = MakeASTNode(NODE_VALUE, v, nil, nil, currentLine)//Value:1 SYMBOL }
+#         | v:REGEXP                        { //Value:2 REGEXP }
+          | v:STRING1                       { $$ = MakeASTNode(NODE_STRING, v, nil, nil, currentLine) //Value:3 STRING1 }
+#         | v:STRING2                       { //Value:4 STRING2 }
+          | v:CONST                         { $$ = v //Value:5 CONST }
+          | 'nil'                           { $$ = MakeASTNode(NODE_NIL, nil, nil, nil, currentLine) //Value:6 nil }
+          | 'true'                          { $$ = MakeASTNode(NODE_TRUE, nil, nil, nil, currentLine) //Value:7 true }
+          | 'false'                         { $$ = MakeASTNode(NODE_FALSE, nil, nil, nil, currentLine) //Value:8 false }
+          | 'self'                          { $$ = MakeASTNode(NODE_SELF, nil, nil, nil, currentLine) //Value:9 self }
+          | name:IVAR                       { $$ = MakeASTNode(NODE_GETIVAR, name, nil, nil, currentLine) //Value:10 IVAR }
+          | name:CVAR                       { $$ = MakeASTNode(NODE_GETCVAR, name, nil, nil, currentLine) //Value:11 CVAR }
+          | name:GLOBAL                     { $$ = MakeASTNode(NODE_GETGLOBAL, name, nil, nil, currentLine) //Value:12 GLOBAL } # TODO
+          | '[' - ']'                       { $$ = MakeASTNode(NODE_ARRAY, nil, nil, nil, currentLine) //Value:13 [] }
+          | '[' - items:AryItems - ']'      { $$ = MakeASTNode(NODE_ARRAY, items, nil, nil, currentLine) //Value:14 [AryItems] }
+          | '{' - '}'                       { $$ = MakeASTNode(NODE_HASH, nil, nil, nil, currentLine) //Value:15 {} }
+          | '{' - items:HashItems - '}'     { $$ = MakeASTNode(NODE_HASH, items, nil, nil, currentLine) //Value:16 {HashItems} }
+          | '(' - Expr - ')'
+
+AryItems  = - head:Expr -                   { //AryItems:0 }
+            ( ',' - tail:Expr -             { head.PushBack(tail) //AryItems:1 }
+            )*                              { $$ = head //AryItems:2 }
+
+HashItems = head:Expr - '=>' - val:Expr     { head.PushBack(val) //HashItems:0 }
+            ( - ',' - key:Expr -            { head.PushBack(key) //HashItems:1 key }
+                '=>' - val:Expr             { head.PushBack(val) //HashItems:2 val }
+            )*                              { $$ = head //HashItems:3 $$ = head }
+
+KEYWORD   = 'while' | 'until' | 'do' | 'end' |
+            'if' | 'unless' | 'else' |
+            'true' | 'false' | 'nil' | 'self' |
+            'class' | 'module' | 'def' |
+            'yield' | 'return' | 'break'
+
+NAME      = [a-zA-Z0-9_]+
+ID        = !'self'                         # self is special, can never be a method name
+            < KEYWORD > &('.' | '(' | '[')  { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //ID:0 KEYWORD.([ } # hm, there's probably a better way
+          | < KEYWORD NAME >                { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //ID:1 KEYWORD NAME }
+          | !KEYWORD
+            < [a-z_] NAME?
+              ( '=' &'(' | '!'| '?' )? >    { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //ID:2 simply ID }
+CONST     = < [A-Z] NAME? >                 { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //CONST:0 }
+BINOP     = < ( '**' | '^'  | '&'  | '|'  | '~'  |
+                '+'  | '-'  | '*'  | '/'  | '%'  | '<=>' |
+                '<<' | '>>' | '==' | '=~' | '!=' | '===' |
+                '<'  | '>'  | '<=' | '>='
+              ) >                           { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //BINOP:0 }
+UNOP      = < ( '-@' | '!' ) >              { //UNOP:0 }
+METHOD    = ID | UNOP | BINOP
+ASSIGN    = < '=' > &(!'=')                 { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //ASSIGN:0 }
+IVAR      = < '@' NAME >                    { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //IVAR:0 }
+CVAR      = < '@@' NAME >                   { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //CVAR:0 }
+GLOBAL    = < '$' NAME >                    { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //GLOBAL:0 }
+NUMBER    = < [0-9]+ >                      { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.numeric, _ = strconv.Atoi(buffer[begin:end]); $$ = currentAST; //NUMBER:0 }
+SYMBOL    = ':' < (NAME | KEYWORD) >        { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //SYMBOL:0 }
+
+STRING1   = '\''                            { parseStr = make([]string, 12) //STRING1:0 STRING_START }
+            (
+              '\\\''                        { parseStr = append(parseStr, "\\'")//STRING1:1 escaped \' }
+            | < [^\'] >                     { parseStr = append(parseStr, buffer[begin:end])//STRING1:2 content }
+            )* '\''                         { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = strings.Join(parseStr, ""); $$ = currentAST;  //STRING1:3 }
+
+#ESC_CHAR  = '\\n'                           { assert(nbuf + 1 < 4096); memcpy(sbuf + nbuf, "\n", sizeof(char) * 1); nbuf += 1; }
+#          | '\\b'                           { assert(nbuf + 1 < 4096); memcpy(sbuf + nbuf, "\b", sizeof(char) * 1); nbuf += 1; }
+#          | '\\f'                           { assert(nbuf + 1 < 4096); memcpy(sbuf + nbuf, "\f", sizeof(char) * 1); nbuf += 1; }
+#          | '\\r'                           { assert(nbuf + 1 < 4096); memcpy(sbuf + nbuf, "\r", sizeof(char) * 1); nbuf += 1; }
+#          | '\\t'                           { assert(nbuf + 1 < 4096); memcpy(sbuf + nbuf, "\t", sizeof(char) * 1); nbuf += 1; }
+#          | '\\\"'                          { assert(nbuf + 1 < 4096); memcpy(sbuf + nbuf, "\"", sizeof(char) * 1); nbuf += 1; }
+#          | '\\\\'                          { assert(nbuf + 1 < 4096); memcpy(sbuf + nbuf, "\\", sizeof(char) * 1); nbuf += 1; }
+
+#STRING2   = '"'                             { STRING_START }
+#            (
+#              ESC_CHAR
+#            | < [^\"] >                     { assert(nbuf + yyleng < 4096); memcpy(sbuf + nbuf, yytext, sizeof(char) * yyleng); nbuf += yyleng; }  #" for higlighting
+#            )*
+#            '"'                             { $$ = TrString_new2(yyvm, sbuf) }
+
+#REGEXP    = '/'                             { STRING_START }
+#            (
+#              ESC_CHAR
+#            | < [^/] >                      { assert(nbuf + yyleng < 4096); memcpy(sbuf + nbuf, yytext, sizeof(char) * yyleng); nbuf += yyleng; }
+#            )*
+#            '/'                             { $$ = TrRegexp_new(yyvm, sbuf, 0) }
+
+-         = [ \t]*
+SPACE     = [ ]+
+EOL       = ( '\n' | '\r\n' | '\r' )        { currentLine += 1 //EOL:0 count line }
+EOF       = !.
+SEP       = ( - Comment? (EOL | ';') )+
