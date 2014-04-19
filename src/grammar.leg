@@ -88,7 +88,7 @@ AsgnCall   =                                { rcv = nil //AsgnCall:0 }
             ( rcv:Value '.'
             )? ( rmsg:Message '.'           { currentAST := MakeASTNode(NODE_SEND,rcv, rmsg, nil, currentLine); rcv = currentAST; //AsgnCall:1 }
                )* msg:ID - asg:ASSIGN
-                  - val:Stmt                { //AsgnCall:2 TODO}
+                  - val:Stmt                { argAST := MakeASTNode(NODE_ARG, val, nil, nil, currentLine); msgVal := []string{msg.value.str, "="}; msg.value.str = strings.Join(msgVal, ""); msgAST := MakeASTNode(NODE_MSG, msg, argAST, nil, currentLine); $$ = MakeASTNode(NODE_SEND, rcv, msgAST, nil, currentLine); //AsgnCall:2}
 
 Receiver  = { rcv = nil //Receiver:0} (                               
               rcv:Call { $$ = rcv //Receiver:1}
@@ -211,7 +211,7 @@ Value     = v:NUMBER                        { $$ = MakeASTNode(NODE_VALUE, v, ni
 #         | v:REGEXP                        { //Value:2 REGEXP }
           | v:STRING1                       { $$ = MakeASTNode(NODE_STRING, v, nil, nil, currentLine) //Value:3 STRING1 }
 #         | v:STRING2                       { //Value:4 STRING2 }
-          | v:CONST                         { $$ = v //Value:5 CONST }
+          | v:CONST                         { $$ = MakeASTNode(NODE_CONST, v, nil, nil, currentLine) //Value:5 CONST }
           | 'nil'                           { $$ = MakeASTNode(NODE_NIL, nil, nil, nil, currentLine) //Value:6 nil }
           | 'true'                          { $$ = MakeASTNode(NODE_TRUE, nil, nil, nil, currentLine) //Value:7 true }
           | 'false'                         { $$ = MakeASTNode(NODE_FALSE, nil, nil, nil, currentLine) //Value:8 false }

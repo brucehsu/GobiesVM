@@ -999,7 +999,11 @@ func (p *Leg) Execute() {
 			currentAST := MakeASTNode(NODE_SEND, stack[stack_idx-4], stack[stack_idx-3], nil, currentLine)
 			stack[stack_idx-4] = currentAST //AsgnCall:1
 		case RuleAction11:
-			//AsgnCall:2 TODO
+			argAST := MakeASTNode(NODE_ARG, stack[stack_idx-0], nil, nil, currentLine)
+			msgVal := []string{stack[stack_idx-2].value.str, "="}
+			stack[stack_idx-2].value.str = strings.Join(msgVal, "")
+			msgAST := MakeASTNode(NODE_MSG, stack[stack_idx-2], argAST, nil, currentLine)
+			yy = MakeASTNode(NODE_SEND, stack[stack_idx-4], msgAST, nil, currentLine) //AsgnCall:2
 		case RuleAction12:
 			stack[stack_idx-0] = nil //Receiver:0
 		case RuleAction13:
@@ -1168,7 +1172,7 @@ func (p *Leg) Execute() {
 		case RuleAction74:
 			yy = MakeASTNode(NODE_STRING, stack[stack_idx-2], nil, nil, currentLine) //Value:3 STRING1
 		case RuleAction75:
-			yy = stack[stack_idx-2] //Value:5 CONST
+			yy = MakeASTNode(NODE_CONST, stack[stack_idx-2], nil, nil, currentLine) //Value:5 CONST
 		case RuleAction76:
 			yy = MakeASTNode(NODE_NIL, nil, nil, nil, currentLine) //Value:6 nil
 		case RuleAction77:
@@ -6905,7 +6909,7 @@ func (p *Leg) Init() {
 			}
 			return true
 		},
-		/* 65 Action11 <- <{ //AsgnCall:2 TODO}> */
+		/* 65 Action11 <- <{ argAST := MakeASTNode(NODE_ARG, stack[stack_idx-0], nil, nil, currentLine); msgVal := []string{stack[stack_idx-2].value.str, "="}; stack[stack_idx-2].value.str = strings.Join(msgVal, ""); msgAST := MakeASTNode(NODE_MSG, stack[stack_idx-2], argAST, nil, currentLine); yy = MakeASTNode(NODE_SEND, stack[stack_idx-4], msgAST, nil, currentLine); //AsgnCall:2}> */
 		func() bool {
 			{
 
@@ -7417,7 +7421,7 @@ func (p *Leg) Init() {
 			}
 			return true
 		},
-		/* 129 Action75 <- <{ yy = stack[stack_idx-2] //Value:5 CONST }> */
+		/* 129 Action75 <- <{ yy = MakeASTNode(NODE_CONST, stack[stack_idx-2], nil, nil, currentLine) //Value:5 CONST }> */
 		func() bool {
 			{
 
