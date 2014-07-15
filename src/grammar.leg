@@ -13,22 +13,25 @@ type Leg Peg {
 var traverse_level int = 0
 
 func Traverse(root *AST) {
-  for i:=0; i<traverse_level; i++ {
+  for i := 0; i < traverse_level; i++ {
     fmt.Printf("  ")
   }
   traverse_level += 1
   fmt.Printf("%s: %+v\n", node_type_str[root.Type], root)
-  
+
   root_head := root.head
 
   for idx, _ := range root.args {
     if root.args[idx] != nil {
-      Traverse(root.args[idx])      
+      Traverse(root.args[idx])
     }
   }
 
   traverse_level -= 1
-
+  if root_head == nil {
+    return
+  }
+  root_head = root_head.next
   for root_head != nil {
     Traverse(root_head)
     root_head = root_head.next

@@ -29,7 +29,10 @@ func Traverse(root *AST) {
 	}
 
 	traverse_level -= 1
-
+	if root_head == nil {
+		return
+	}
+	root_head = root_head.next
 	for root_head != nil {
 		Traverse(root_head)
 		root_head = root_head.next
