@@ -137,12 +137,15 @@ func (node *AST) PushBack(child *AST) *AST {
 		return node
 	}
 	if node.head == nil {
-		node.head = child
+		node.head = node
+		node.next = child
 	}
 	node.length += 1
-	child.prev = node.tail
 	if node.tail != nil {
 		node.tail.next = child
+		child.prev = node.tail
+	} else {
+		child.prev = nil
 	}
 	node.tail = child
 	return node
