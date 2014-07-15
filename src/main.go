@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	// "fmt"
 	"io/ioutil"
 	"log"
 	"runtime"
@@ -31,15 +31,18 @@ func main() {
 
 	p.Execute()
 
-	Traverse(rootAST)
+	// Traverse(rootAST)
 
 	vm := initVM()
 
-	fmt.Println("")
-	fmt.Println(len(vm.instList))
-	for _, v := range vm.instList {
-		fmt.Println(v)
-		fmt.Print("\t")
-		fmt.Println(v.obj)
-	}
+	vm.compile(rootAST)
+	vm.executeBytecode()
+
+	// fmt.Println("")
+	// fmt.Println(len(vm.instList))
+	// for _, v := range vm.instList {
+	// 	fmt.Println(v)
+	// 	fmt.Print("\t")
+	// 	fmt.Println(v.obj)
+	// }
 }

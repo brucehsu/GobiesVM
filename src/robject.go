@@ -7,7 +7,7 @@ type RObject struct {
 }
 
 type RMethod struct {
-	gofunc func(vm *GobiesVM, receiver Object, v ...interface{})
+	gofunc func(vm *GobiesVM, receiver Object, v []Object)
 	def    []*Instruction
 }
 

@@ -1249,7 +1249,8 @@ func (p *Leg) Execute() {
 			yy = currentAST //GLOBAL:0
 		case RuleAction104:
 			currentAST := &AST{Type: NODE_ASTVAL, line: currentLine}
-			currentAST.value.numeric, _ = strconv.Atoi(buffer[begin:end])
+			tempInt, _ := strconv.Atoi(buffer[begin:end])
+			currentAST.value.numeric = int64(tempInt)
 			yy = currentAST //NUMBER:0
 		case RuleAction105:
 			currentAST := &AST{Type: NODE_ASTVAL, line: currentLine}

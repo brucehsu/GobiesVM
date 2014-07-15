@@ -8,8 +8,8 @@ type RKernel struct {
 
 func initRKernel() *RKernel {
 	rkernel := &RKernel{}
-	rkernel.ivars = make(map[string]*Object, 256)
-	rkernel.methods = make(map[string]*RMethod, 256)
+	rkernel.ivars = make(map[string]*Object)
+	rkernel.methods = make(map[string]*RMethod)
 	rkernel.initRKernelMethods()
 	return rkernel
 }
@@ -22,7 +22,12 @@ func (obj *RKernel) getMethods() map[string]*RMethod {
 	return obj.methods
 }
 
-func RKernel_puts(vm *GobiesVM, receiver Object, v ...interface{}) {
-	str := v[0]
-	fmt.Println(str)
+func (obj *RKernel) getString() string {
+	return "RKernel"
+}
+
+func RKernel_puts(vm *GobiesVM, receiver Object, v []Object) {
+	for _, obj := range v {
+		fmt.Println(obj.getString())
+	}
 }
