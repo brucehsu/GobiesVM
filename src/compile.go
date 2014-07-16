@@ -71,7 +71,7 @@ func (VM *GobiesVM) compile(node *AST) {
 		if len(astval.value.str) != 0 { // SYMBOL
 			VM.AddInstruction(BC_SETSYMBOL, &RString{val: RValue{str: astval.value.str}})
 		} else { // NUMBER
-			VM.AddInstruction(BC_PUTOBJ, &RFixnum{val: RValue{fixnum: node.value.numeric}})
+			VM.AddInstruction(BC_PUTOBJ, &RFixnum{val: RValue{fixnum: astval.value.numeric}})
 		}
 	case NODE_ASTVAL:
 		if len(node.value.str) != 0 {
