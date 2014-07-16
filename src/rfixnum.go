@@ -2,15 +2,36 @@ package main
 
 import "strconv"
 
-type RFixnum struct {
-	RObject
-	val RValue
+func initRFixnum() *RObject {
+	obj := &RObject{}
+	obj.name = "RFixnum"
+	obj.ivars = make(map[string]Object)
+	obj.class = nil
+	obj.methods = make(map[string]*RMethod)
+
+	// RString method initialization
+	obj.methods["new"] = &RMethod{gofunc: RFixnum_new}
+	obj.methods["to_s"] = &RMethod{gofunc: RFixnum_to_s}
+
+	return obj
 }
 
-func (obj *RFixnum) getMethods() map[string]*RMethod {
-	return obj.methods
+// String.new(int=0)
+// v = [int64]
+func RFixnum_new(vm *GobiesVM, receiver Object, v []Object) Object {
+	val := int64(0)
+	if len(v) == 1 {
+		val = v[0].(int64)
+	}
+
+	obj := &RObject{}
+	obj.class = vm.consts["RFixnum"]
+	obj.val.fixnum = val
+
+	return obj
 }
 
-func (obj *RFixnum) getString() string {
+func RFixnum_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
+	obj := receiver.(RObject)
 	return strconv.FormatInt(obj.val.fixnum, 10)
 }

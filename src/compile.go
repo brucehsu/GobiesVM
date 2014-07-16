@@ -69,24 +69,32 @@ func (VM *GobiesVM) compile(node *AST) {
 		// NODE_VALUE can only be either NUMBER or SYMBOL
 		astval := node.args[0]
 		if len(astval.value.str) != 0 { // SYMBOL
-			VM.AddInstruction(BC_SETSYMBOL, &RString{val: RValue{str: astval.value.str}})
+			VM.AddInstruction(BC_SETSYMBOL, astval.value.str)
 		} else { // NUMBER
-			VM.AddInstruction(BC_PUTOBJ, &RFixnum{val: RValue{fixnum: astval.value.numeric}})
+			val := make([]Object, 1, 1)
+			val[0] = astval.value.numeric
+			VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, val))
 		}
 	case NODE_ASTVAL:
 		if len(node.value.str) != 0 {
-			VM.AddInstruction(BC_PUTOBJ, &RString{val: RValue{str: node.value.str}})
+			val := make([]Object, 1, 1)
+			val[0] = node.value.str
+			VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, val))
 		} else {
-			VM.AddInstruction(BC_PUTOBJ, &RFixnum{val: RValue{fixnum: node.value.numeric}})
+			val := make([]Object, 1, 1)
+			val[0] = node.value.numeric
+			VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, val))
 		}
 	case NODE_STRING:
 		astval := node.args[0]
-		VM.AddInstruction(BC_PUTOBJ, &RString{val: RValue{str: astval.value.str}})
+		val := make([]Object, 1, 1)
+		val[0] = astval.value.str
+		VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, val))
 	case NODE_ASSIGN:
 		// Set local variable
 		astval := node.args[0]
 		VM.compile(node.args[1])
-		VM.AddInstruction(BC_SETLOCAL, &RString{val: RValue{str: astval.value.str}})
+		VM.AddInstruction(BC_SETLOCAL, astval.value.str)
 	case NODE_ARG:
 		head := node.args[0]
 		for {
@@ -105,14 +113,14 @@ func (VM *GobiesVM) compile(node *AST) {
 		if rcv == nil && block == nil {
 			if msg.args[1] == nil { // Local variable access
 				// TODO: Local method call without any argument
-				VM.AddInstruction(BC_GETLOCAL, &RString{val: RValue{str: msg.args[0].value.str}})
+				VM.AddInstruction(BC_GETLOCAL, msg.args[0].value.str)
 			} else { // Calling local methods with one or more arguments
 				if msg.args[1] != nil {
 					VM.AddInstruction(BC_PUTSELF, nil)
 					VM.compile(msg.args[1])
 					argc = msg.args[1].args[0].length
 				}
-				VM.AddInstruction(BC_SEND, &RString{val: RValue{str: msg.args[0].value.str}})
+				VM.AddInstruction(BC_SEND, msg.args[0].value.str)
 				VM.instList[len(VM.instList)-1].argc = argc
 			}
 		} else {
@@ -130,7 +138,7 @@ func (VM *GobiesVM) compile(node *AST) {
 				VM.compile(block)
 			}
 
-			VM.AddInstruction(BC_SEND, &RString{val: RValue{str: msg.args[0].value.str}})
+			VM.AddInstruction(BC_SEND, msg.args[0].value.str)
 			VM.instList[len(VM.instList)-1].argc = argc
 		}
 	case NODE_MSG:
@@ -163,22 +171,22 @@ func (VM *GobiesVM) compile(node *AST) {
 	case NODE_MODULE:
 	case NODE_CONST:
 		astval := node.args[0]
-		VM.AddInstruction(BC_GETCONST, &RString{val: RValue{str: astval.value.str}})
+		VM.AddInstruction(BC_GETCONST, astval.value.str)
 	case NODE_SETCONST:
 		name := node.args[0]
 		val := node.args[1]
 		VM.compile(val)
-		VM.AddInstruction(BC_SETCONST, &RString{val: RValue{str: name.value.str}})
+		VM.AddInstruction(BC_SETCONST, name.value.str)
 	case NODE_ARRAY:
 	case NODE_HASH:
 	case NODE_RANGE:
 	case NODE_GETIVAR:
 		name := node.args[0]
-		VM.AddInstruction(BC_GETIVAR, &RString{val: RValue{str: name.value.str}})
+		VM.AddInstruction(BC_GETIVAR, name.value.str)
 	case NODE_SETIVAR:
 	case NODE_GETCVAR:
 		name := node.args[0]
-		VM.AddInstruction(BC_GETCVAR, &RString{val: RValue{str: name.value.str}})
+		VM.AddInstruction(BC_GETCVAR, name.value.str)
 	case NODE_SETCVAR:
 	case NODE_GETGLOBAL:
 	case NODE_SETGLOBAL:

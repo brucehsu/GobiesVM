@@ -10,7 +10,7 @@ type CallFrame struct {
 type GobiesVM struct {
 	instList       []*Instruction
 	callFrameStack []*CallFrame
-	consts         map[string]Object
+	consts         map[string]*RObject
 	symbols        map[string]int
 }
 
@@ -18,6 +18,9 @@ func initVM() *GobiesVM {
 	VM := &GobiesVM{}
 	top := initCallFrame()
 	VM.callFrameStack = append(VM.callFrameStack, top)
+	VM.consts = make(map[string]*RObject)
+	VM.initConsts()
+	VM.symbols = make(map[string]int)
 	top.me = initRKernel()
 	return VM
 }
@@ -26,6 +29,21 @@ func initCallFrame() *CallFrame {
 	frame := &CallFrame{}
 	frame.var_table = make(map[string]Object)
 	return frame
+}
+
+func (VM *GobiesVM) initConsts() {
+	VM.consts["RString"] = initRString()
+	VM.consts["RFixnum"] = initRFixnum()
+}
+
+func (obj *RObject) methodLookup(method_name string) *RMethod {
+	if val, ok := obj.methods[method_name]; ok {
+		return val
+	}
+	if obj.class != nil {
+		return obj.class.methodLookup(method_name)
+	}
+	return nil
 }
 
 func (VM *GobiesVM) executeBytecode() {
@@ -42,10 +60,10 @@ func (VM *GobiesVM) executeBytecode() {
 		case BC_PUTFALSE:
 		case BC_SETLOCAL:
 			top := currentCallFrame.stack[len(currentCallFrame.stack)-1]
-			currentCallFrame.var_table[v.obj.getString()] = top
+			currentCallFrame.var_table[v.obj.(string)] = top
 			currentCallFrame.stack = currentCallFrame.stack[0 : len(currentCallFrame.stack)-1]
 		case BC_GETLOCAL:
-			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.var_table[v.obj.getString()])
+			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.var_table[v.obj.(string)])
 		case BC_SETGLOBAL:
 		case BC_GETGLOBAL:
 		case BC_SETSYMBOL:
@@ -59,9 +77,9 @@ func (VM *GobiesVM) executeBytecode() {
 		case BC_SEND:
 			argLists := currentCallFrame.stack[len(currentCallFrame.stack)-(v.argc+1):]
 			currentCallFrame.stack = currentCallFrame.stack[:len(currentCallFrame.stack)-(v.argc+1)]
-			recv := argLists[0]
+			recv := argLists[0].(*RObject)
 			argLists = argLists[1:]
-			recv.getMethods()[v.obj.getString()].gofunc(VM, recv, argLists)
+			recv.methodLookup(v.obj.(string)).gofunc(VM, *recv, argLists)
 		case BC_JUMP:
 		}
 	}
