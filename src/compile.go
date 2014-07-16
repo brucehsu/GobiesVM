@@ -44,7 +44,6 @@ func (VM *GobiesVM) compile(node *AST) {
 
 	switch node.Type {
 	case NODE_ROOT:
-		VM.AddInstruction(BC_PUTSELF, nil)
 		VM.compile(node.args[0])
 	case NODE_LIST:
 	case NODE_BLOCK:
@@ -105,6 +104,7 @@ func (VM *GobiesVM) compile(node *AST) {
 				VM.AddInstruction(BC_GETLOCAL, &RString{val: RValue{str: msg.args[0].value.str}})
 			} else { // Calling local methods with one or more arguments
 				if msg.args[1] != nil {
+					VM.AddInstruction(BC_PUTSELF, nil)
 					VM.compile(msg.args[1])
 					argc = msg.args[1].args[0].length
 				}
