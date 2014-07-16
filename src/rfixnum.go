@@ -9,14 +9,14 @@ func initRFixnum() *RObject {
 	obj.class = nil
 	obj.methods = make(map[string]*RMethod)
 
-	// RString method initialization
+	// RFixnum method initialization
 	obj.methods["new"] = &RMethod{gofunc: RFixnum_new}
 	obj.methods["to_s"] = &RMethod{gofunc: RFixnum_to_s}
 
 	return obj
 }
 
-// String.new(int=0)
+// Fixnum.new(int=0)
 // v = [int64]
 func RFixnum_new(vm *GobiesVM, receiver Object, v []Object) Object {
 	val := int64(0)
