@@ -44,7 +44,11 @@ func (VM *GobiesVM) compile(node *AST) {
 
 	switch node.Type {
 	case NODE_ROOT:
-		VM.compile(node.args[0])
+		head := node.args[0]
+		for head != nil {
+			VM.compile(head)
+			head = head.next
+		}
 	case NODE_LIST:
 	case NODE_BLOCK:
 		body := node.args[0]
