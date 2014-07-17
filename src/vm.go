@@ -79,7 +79,10 @@ func (VM *GobiesVM) executeBytecode() {
 			currentCallFrame.stack = currentCallFrame.stack[:len(currentCallFrame.stack)-(v.argc+1)]
 			recv := argLists[0].(*RObject)
 			argLists = argLists[1:]
-			recv.methodLookup(v.obj.(string)).gofunc(VM, *recv, argLists)
+			return_val := recv.methodLookup(v.obj.(string)).gofunc(VM, *recv, argLists)
+			if return_val != nil {
+				currentCallFrame.stack = append(currentCallFrame.stack, return_val)
+			}
 		case BC_JUMP:
 		}
 	}
