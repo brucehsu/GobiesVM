@@ -132,6 +132,7 @@ func (VM *GobiesVM) compile(node *AST) {
 
 			if msg.args[1] != nil {
 				VM.compile(msg.args[1])
+				argc = msg.args[1].args[0].length
 			}
 
 			if block != nil {
@@ -178,6 +179,16 @@ func (VM *GobiesVM) compile(node *AST) {
 		VM.compile(val)
 		VM.AddInstruction(BC_SETCONST, name.value.str)
 	case NODE_ARRAY:
+		args := node.args[0]
+		argc := args.length
+		head := args.head
+		VM.AddInstruction(BC_GETCONST, "RArray")
+		for head != nil {
+			VM.compile(head)
+			head = head.next
+		}
+		VM.AddInstruction(BC_SEND, "new")
+		VM.instList[len(VM.instList)-1].argc = argc
 	case NODE_HASH:
 	case NODE_RANGE:
 	case NODE_GETIVAR:

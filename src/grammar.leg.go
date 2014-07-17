@@ -1014,12 +1014,11 @@ func (p *Leg) Execute() {
 		case RuleAction14:
 			yy = stack[stack_idx-0] //Receiver:2
 		case RuleAction15:
-			currentAST := MakeASTNode(NODE_ARG, stack[stack_idx-0], nil, nil, currentLine)
-			stack[stack_idx-1].PushBack(currentAST)
+			stack[stack_idx-1].args[0].PushBack(stack[stack_idx-0])
 			methodAST := &AST{Type: NODE_ASTVAL}
 			methodAST.value.str = "[]="
 			msgAST := MakeASTNode(NODE_MSG, methodAST, stack[stack_idx-1], nil, currentLine)
-			currentAST = MakeASTNode(NODE_SEND, stack[stack_idx-2], msgAST, nil, currentLine)
+			currentAST := MakeASTNode(NODE_SEND, stack[stack_idx-2], msgAST, nil, currentLine)
 			yy = currentAST //SpecCall:0
 		case RuleAction16:
 			methodAST := &AST{Type: NODE_ASTVAL}
@@ -6945,7 +6944,7 @@ func (p *Leg) Init() {
 			}
 			return true
 		},
-		/* 69 Action15 <- <{ currentAST :=  MakeASTNode(NODE_ARG, stack[stack_idx-0], nil, nil, currentLine); stack[stack_idx-1].PushBack(currentAST); methodAST :=  &AST{Type: NODE_ASTVAL}; methodAST.value.str = "[]="; msgAST := MakeASTNode(NODE_MSG, methodAST, stack[stack_idx-1], nil, currentLine); currentAST = MakeASTNode(NODE_SEND, stack[stack_idx-2], msgAST, nil, currentLine); yy = currentAST; //SpecCall:0 }> */
+		/* 69 Action15 <- <{ stack[stack_idx-1].PushBack(stack[stack_idx-0]); methodAST :=  &AST{Type: NODE_ASTVAL}; methodAST.value.str = "[]="; msgAST := MakeASTNode(NODE_MSG, methodAST, stack[stack_idx-1], nil, currentLine); currentAST = MakeASTNode(NODE_SEND, stack[stack_idx-2], msgAST, nil, currentLine); yy = currentAST; //SpecCall:0 }> */
 		func() bool {
 			{
 
@@ -7658,7 +7657,7 @@ func (p *Leg) Init() {
 			}
 			return true
 		},
-		/* 159 Action104 <- <{ currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.numeric, _ = strconv.Atoi(buffer[begin:end]); yy = currentAST; //NUMBER:0 }> */
+		/* 159 Action104 <- <{ currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; tempInt, _ := strconv.Atoi(buffer[begin:end]); currentAST.value.numeric = int64(tempInt); yy = currentAST; //NUMBER:0 }> */
 		func() bool {
 			{
 

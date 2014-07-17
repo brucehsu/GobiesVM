@@ -34,6 +34,7 @@ func initCallFrame() *CallFrame {
 func (VM *GobiesVM) initConsts() {
 	VM.consts["RString"] = initRString()
 	VM.consts["RFixnum"] = initRFixnum()
+	VM.consts["RArray"] = initRArray()
 }
 
 func (obj *RObject) methodLookup(method_name string) *RMethod {
@@ -70,6 +71,7 @@ func (VM *GobiesVM) executeBytecode() {
 		case BC_GETSYMBOL:
 		case BC_SETCONST:
 		case BC_GETCONST:
+			currentCallFrame.stack = append(currentCallFrame.stack, VM.consts[v.obj.(string)])
 		case BC_SETIVAR:
 		case BC_GETIVAR:
 		case BC_SETCVAR:
@@ -79,7 +81,7 @@ func (VM *GobiesVM) executeBytecode() {
 			currentCallFrame.stack = currentCallFrame.stack[:len(currentCallFrame.stack)-(v.argc+1)]
 			recv := argLists[0].(*RObject)
 			argLists = argLists[1:]
-			return_val := recv.methodLookup(v.obj.(string)).gofunc(VM, *recv, argLists)
+			return_val := recv.methodLookup(v.obj.(string)).gofunc(VM, recv, argLists)
 			if return_val != nil {
 				currentCallFrame.stack = append(currentCallFrame.stack, return_val)
 			}

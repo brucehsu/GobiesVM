@@ -99,7 +99,7 @@ Receiver  = { rcv = nil //Receiver:0} (
             )                              
 
 SpecCall  = rcv:Receiver '[' args:Args ']'  
-            - ASSIGN - val:Stmt             { currentAST :=  MakeASTNode(NODE_ARG, val, nil, nil, currentLine); args.PushBack(currentAST); methodAST :=  &AST{Type: NODE_ASTVAL}; methodAST.value.str = "[]="; msgAST := MakeASTNode(NODE_MSG, methodAST, args, nil, currentLine); currentAST = MakeASTNode(NODE_SEND, rcv, msgAST, nil, currentLine); $$ = currentAST; //SpecCall:0 }
+            - ASSIGN - val:Stmt             { args.args[0].PushBack(val); methodAST :=  &AST{Type: NODE_ASTVAL}; methodAST.value.str = "[]="; msgAST := MakeASTNode(NODE_MSG, methodAST, args, nil, currentLine); currentAST := MakeASTNode(NODE_SEND, rcv, msgAST, nil, currentLine); $$ = currentAST; //SpecCall:0 }
           | rcv:Receiver '[' args:Args ']'  { methodAST :=  &AST{Type: NODE_ASTVAL}; methodAST.value.str = "[]"; msgAST := MakeASTNode(NODE_MSG, methodAST, args, nil, currentLine); currentAST := MakeASTNode(NODE_SEND, rcv, msgAST, nil, currentLine); $$ = currentAST; //SpecCall:1 }
 
 BinOp     = ( rcv:SpecCall | rcv:Receiver )
@@ -262,7 +262,7 @@ ASSIGN    = < '=' > &(!'=')                 { currentAST :=  &AST{Type: NODE_AST
 IVAR      = < '@' NAME >                    { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //IVAR:0 }
 CVAR      = < '@@' NAME >                   { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //CVAR:0 }
 GLOBAL    = < '$' NAME >                    { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //GLOBAL:0 }
-NUMBER    = < [0-9]+ >                      { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.numeric, _ = strconv.Atoi(buffer[begin:end]); $$ = currentAST; //NUMBER:0 }
+NUMBER    = < [0-9]+ >                      { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; tempInt, _ := strconv.Atoi(buffer[begin:end]); currentAST.value.numeric = int64(tempInt); $$ = currentAST; //NUMBER:0 }
 SYMBOL    = ':' < (NAME | KEYWORD) >        { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //SYMBOL:0 }
 
 STRING1   = '\''                            { parseStr = make([]string, 12) //STRING1:0 STRING_START }
