@@ -22,7 +22,7 @@ func (obj *RObject) initRKernelMethods() {
 func RKernel_puts(vm *GobiesVM, receiver Object, v []Object) Object {
 	for _, obj := range v {
 		robj := obj.(*RObject)
-		fmt.Println(robj.methodLookup("to_s").gofunc(vm, *robj, nil))
+		fmt.Println(robj.methodLookup("to_s").gofunc(vm, robj, nil))
 	}
 	return nil
 }

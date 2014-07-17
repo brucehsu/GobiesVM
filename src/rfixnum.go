@@ -32,6 +32,6 @@ func RFixnum_new(vm *GobiesVM, receiver Object, v []Object) Object {
 }
 
 func RFixnum_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
-	obj := receiver.(RObject)
+	obj := receiver.(*RObject)
 	return strconv.FormatInt(obj.val.fixnum, 10)
 }

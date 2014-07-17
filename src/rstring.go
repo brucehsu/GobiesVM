@@ -32,12 +32,12 @@ func RString_new(vm *GobiesVM, receiver Object, v []Object) Object {
 }
 
 func RString_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
-	obj := receiver.(RObject)
+	obj := receiver.(*RObject)
 	return obj.val.str
 }
 
 func RString_length(vm *GobiesVM, receiver Object, v []Object) Object {
-	obj := receiver.(RObject)
+	obj := receiver.(*RObject)
 	arg := make([]Object, 1, 1)
 	arg[0] = int64(len(obj.val.str))
 	return RFixnum_new(vm, receiver, arg)
