@@ -28,7 +28,7 @@ func RIO_readlines(vm *GobiesVM, receiver Object, v []Object) Object {
 	content, _ := ioutil.ReadFile(filename)
 	str := string(content[:])
 
-	lines := strings.Split(str, "\n")
+	lines := strings.SplitAfter(str, "\n")
 	for _, line := range lines {
 		dummy_obj := make([]Object, 1, 1)
 		dummy_obj[0] = line
