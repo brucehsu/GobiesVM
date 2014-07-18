@@ -26,11 +26,14 @@ func RIO_readlines(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := RArray_new(vm, receiver, nil)
 
 	input, _ := os.Open(filename)
-	scanner := bufio.NewScanner(input)
+	defer input.Close()
 
-	for scanner.Scan() {
+	reader := bufio.NewReader(input)
+
+	line, err := reader.ReadString('\n')
+	for ; err == nil; line, err = reader.ReadString('\n') {
 		dummy_obj := make([]Object, 1, 1)
-		dummy_obj[0] = scanner.Text()
+		dummy_obj[0] = line
 		rstr := RString_new(vm, receiver, dummy_obj)
 		dummy_obj[0] = rstr
 		RArray_append(vm, obj, dummy_obj)
