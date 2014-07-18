@@ -15,6 +15,8 @@ func initRArray() *RObject {
 	obj.methods["[]"] = &RMethod{gofunc: RArray_at}
 	obj.methods["[]="] = &RMethod{gofunc: RArray_assign_to_index}
 	obj.methods["to_s"] = &RMethod{gofunc: RArray_to_s}
+	obj.methods["size"] = &RMethod{gofunc: RArray_length}
+	obj.methods["length"] = &RMethod{gofunc: RArray_length}
 
 	return obj
 }
@@ -78,4 +80,14 @@ func RArray_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
 	}
 
 	return strings.Join(strList, "\n")
+}
+
+func RArray_length(vm *GobiesVM, receiver Object, v []Object) Object {
+	obj := receiver.(*RObject)
+	internal_array := obj.ivars["array"].([]*RObject)
+
+	length := make([]Object, 1, 1)
+	length[0] = int64(len(internal_array))
+
+	return RFixnum_new(vm, receiver, length)
 }
