@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bufio"
-	"os"
+	"io/ioutil"
+	"strings"
 )
 
 func initRIO() *RObject {
@@ -25,13 +25,11 @@ func RIO_readlines(vm *GobiesVM, receiver Object, v []Object) Object {
 
 	obj := RArray_new(vm, receiver, nil)
 
-	input, _ := os.Open(filename)
-	defer input.Close()
+	content, _ := ioutil.ReadFile(filename)
+	str := string(content[:])
 
-	reader := bufio.NewReader(input)
-
-	line, err := reader.ReadString('\n')
-	for ; err == nil; line, err = reader.ReadString('\n') {
+	lines := strings.Split(str, "\n")
+	for _, line := range lines {
 		dummy_obj := make([]Object, 1, 1)
 		dummy_obj[0] = line
 		rstr := RString_new(vm, receiver, dummy_obj)
