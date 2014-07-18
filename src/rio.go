@@ -12,7 +12,7 @@ func initRIO() *RObject {
 	obj.class = nil
 	obj.methods = make(map[string]*RMethod)
 
-	// RString method initialization
+	// RIO method initialization
 	obj.methods["readlines"] = &RMethod{gofunc: RIO_readlines}
 
 	return obj
