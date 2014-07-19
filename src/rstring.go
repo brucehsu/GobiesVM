@@ -1,5 +1,7 @@
 package main
 
+import "strings"
+
 func initRString() *RObject {
 	obj := &RObject{}
 	obj.name = "RString"
@@ -10,6 +12,7 @@ func initRString() *RObject {
 	// RString method initialization
 	obj.methods["new"] = &RMethod{gofunc: RString_new}
 	obj.methods["to_s"] = &RMethod{gofunc: RString_to_s}
+	obj.methods["inspect"] = &RMethod{gofunc: RString_inspect}
 	obj.methods["size"] = &RMethod{gofunc: RString_length}
 	obj.methods["len"] = &RMethod{gofunc: RString_length}
 
@@ -34,6 +37,13 @@ func RString_new(vm *GobiesVM, receiver Object, v []Object) Object {
 func RString_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	return obj.val.str
+}
+
+func RString_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
+	obj := receiver.(*RObject)
+	str := obj.val.str
+	array := []string{"'", str, "'"}
+	return strings.Join(array, "")
 }
 
 func RString_length(vm *GobiesVM, receiver Object, v []Object) Object {
