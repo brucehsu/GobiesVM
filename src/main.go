@@ -14,7 +14,7 @@ func main() {
 
 	if flag.NArg() != 1 {
 		flag.Usage()
-		log.Fatalf("FILE: the leg file to compile")
+		log.Fatalf("FILE: the .rb file to execute")
 	}
 	file := flag.Arg(0)
 
