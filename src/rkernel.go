@@ -17,12 +17,21 @@ func initRKernel() *RObject {
 
 func (obj *RObject) initRKernelMethods() {
 	obj.methods["puts"] = &RMethod{gofunc: RKernel_puts}
+	obj.methods["p"] = &RMethod{gofunc: RKernel_p}
 }
 
 func RKernel_puts(vm *GobiesVM, receiver Object, v []Object) Object {
 	for _, obj := range v {
 		robj := obj.(*RObject)
 		fmt.Println(robj.methodLookup("to_s").gofunc(vm, robj, nil))
+	}
+	return nil
+}
+
+func RKernel_p(vm *GobiesVM, receiver Object, v []Object) Object {
+	for _, obj := range v {
+		robj := obj.(*RObject)
+		fmt.Println(robj.methodLookup("inspect").gofunc(vm, robj, nil))
 	}
 	return nil
 }
