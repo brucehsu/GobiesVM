@@ -10,5 +10,5 @@ type RObject struct {
 
 type RMethod struct {
 	gofunc func(vm *GobiesVM, receiver Object, v []Object) Object
-	def    []*Instruction
+	def    []Instruction
 }

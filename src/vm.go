@@ -8,7 +8,7 @@ type CallFrame struct {
 }
 
 type GobiesVM struct {
-	instList       []*Instruction
+	instList       []Instruction
 	callFrameStack []*CallFrame
 	consts         map[string]*RObject
 	symbols        map[string]int
@@ -48,9 +48,13 @@ func (obj *RObject) methodLookup(method_name string) *RMethod {
 	return nil
 }
 
-func (VM *GobiesVM) executeBytecode() {
-	for _, v := range VM.instList {
+func (VM *GobiesVM) executeBytecode(instList []Instruction) {
+	if instList == nil {
+		instList = VM.instList
+	}
+	for _, v := range instList {
 		currentCallFrame := VM.callFrameStack[len(VM.callFrameStack)-1]
+		// fmt.Println(v)
 		switch v.inst_type {
 		case BC_PUTSELF:
 			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.me)
@@ -78,6 +82,7 @@ func (VM *GobiesVM) executeBytecode() {
 		case BC_SETCVAR:
 		case BC_GETCVAR:
 		case BC_SEND:
+			// fmt.Println(currentCallFrame.stack)
 			argLists := currentCallFrame.stack[len(currentCallFrame.stack)-(v.argc+1):] // argc + 1 ensures inclusion of receiver
 			currentCallFrame.stack = currentCallFrame.stack[:len(currentCallFrame.stack)-(v.argc+1)]
 			recv := argLists[0].(*RObject)
@@ -89,4 +94,24 @@ func (VM *GobiesVM) executeBytecode() {
 		case BC_JUMP:
 		}
 	}
+}
+
+func (VM *GobiesVM) executeBlock(block *RObject, args []*RObject) {
+	// Create clean call frame
+	currentCallFrame := initCallFrame()
+	currentCallFrame.parent = VM.callFrameStack[len(VM.callFrameStack)-1]
+	currentCallFrame.me = currentCallFrame.parent.me
+	VM.callFrameStack = append(VM.callFrameStack, currentCallFrame)
+
+	// Fill in arguments to current call frame
+	if block.ivars["params"] != nil {
+		params := block.ivars["params"].(*RObject).ivars["array"].([]*RObject)
+		for i, v := range params {
+			var_name := v.val.str
+			currentCallFrame.var_table[var_name] = args[i]
+		}
+	}
+
+	// Execute block definition
+	VM.executeBytecode(block.methods["def"].def)
 }

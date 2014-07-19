@@ -28,12 +28,11 @@ type Instruction struct {
 	inst_seq  int
 	inst_type Bytecode
 	obj       Object
-	// block     Instruction[]
-	argc int
+	argc      int
 }
 
 func (vm *GobiesVM) AddInstruction(inst Bytecode, obj Object) {
-	new_inst := &Instruction{inst_type: inst, inst_seq: len(vm.instList)}
+	new_inst := Instruction{inst_type: inst, inst_seq: len(vm.instList)}
 	if obj != nil {
 		new_inst.obj = obj
 	}
@@ -53,18 +52,28 @@ func (VM *GobiesVM) compile(node *AST) {
 	case NODE_BLOCK:
 		body := node.args[0]
 		params := node.args[1]
-		inst_last_idx := len(VM.instList)
-		if params != nil { // Block has params
-			// TODO:
-		} else {
 
-		}
+		inst_last_idx := len(VM.instList) - 1
 		VM.compile(body)
+		block := newRBlock(VM.instList[inst_last_idx+1:])
+		VM.instList = VM.instList[:inst_last_idx+1]
+		VM.AddInstruction(BC_PUTOBJ, block)
 
-		// block_inst_len := len(VM.instList) - inst_last_idx
-		// block := VM.instList[inst_last_idx:-1]
-		VM.instList = VM.instList[0:inst_last_idx]
-		// VM.instList[inst_last_idx].block = block
+		if params != nil { // Block has params
+			argc := params.length
+			param_array := RArray_new(VM, nil, nil)
+			for i := 0; i < argc; i++ {
+				dummy_arg := make([]Object, 1, 1)
+				dummy_arg[0] = params.args[0].value.str
+				param := RString_new(VM, nil, dummy_arg)
+				dummy_arg[0] = param
+				RArray_append(VM, param_array, dummy_arg)
+				params = params.next
+			}
+			block.ivars["params"] = param_array
+		} else {
+			block.ivars["params"] = nil
+		}
 	case NODE_VALUE:
 		// NODE_VALUE can only be either NUMBER or SYMBOL
 		astval := node.args[0]
@@ -137,6 +146,7 @@ func (VM *GobiesVM) compile(node *AST) {
 
 			if block != nil {
 				VM.compile(block)
+				argc += 1
 			}
 
 			VM.AddInstruction(BC_SEND, msg.args[0].value.str)
