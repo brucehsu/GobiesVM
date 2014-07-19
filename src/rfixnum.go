@@ -13,6 +13,7 @@ func initRFixnum() *RObject {
 	obj.methods["new"] = &RMethod{gofunc: RFixnum_new}
 	obj.methods["to_s"] = &RMethod{gofunc: RFixnum_to_s}
 	obj.methods["inspect"] = &RMethod{gofunc: RFixnum_to_s}
+	obj.methods["times"] = &RMethod{gofunc: RFixnum_times}
 
 	return obj
 }
@@ -35,4 +36,27 @@ func RFixnum_new(vm *GobiesVM, receiver Object, v []Object) Object {
 func RFixnum_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	return strconv.FormatInt(obj.val.fixnum, 10)
+}
+
+// RFixnum.times(&block)
+// Given: [RBlock]
+// Block parameters: [i]
+func RFixnum_times(vm *GobiesVM, receiver Object, v []Object) Object {
+	obj := receiver.(*RObject)
+	if v != nil && len(v) == 1 { // Given a single RBlock
+		block := v[0].(*RObject)
+
+		params := make([]*RObject, 1, 1)
+		dummy_args := make([]Object, 1, 1)
+
+		for i := int64(0); i < obj.val.fixnum; i++ {
+			// Prepare block arguments
+			dummy_args[0] = i
+			params[0] = RFixnum_new(vm, nil, dummy_args).(*RObject)
+
+			// Let VM handle all other stuff such as clean call frame
+			vm.executeBlock(block, params)
+		}
+	}
+	return obj
 }
