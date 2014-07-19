@@ -114,4 +114,7 @@ func (VM *GobiesVM) executeBlock(block *RObject, args []*RObject) {
 
 	// Execute block definition
 	VM.executeBytecode(block.methods["def"].def)
+
+	// Pop temporary call frame
+	VM.callFrameStack = VM.callFrameStack[:len(VM.callFrameStack)-1]
 }
