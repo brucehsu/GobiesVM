@@ -12,6 +12,7 @@ func initRFixnum() *RObject {
 	// RFixnum method initialization
 	obj.methods["new"] = &RMethod{gofunc: RFixnum_new}
 	obj.methods["to_s"] = &RMethod{gofunc: RFixnum_to_s}
+	obj.methods["inspect"] = &RMethod{gofunc: RFixnum_to_s}
 
 	return obj
 }
