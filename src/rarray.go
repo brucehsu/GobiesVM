@@ -15,6 +15,7 @@ func initRArray() *RObject {
 	obj.methods["[]"] = &RMethod{gofunc: RArray_at}
 	obj.methods["[]="] = &RMethod{gofunc: RArray_assign_to_index}
 	obj.methods["to_s"] = &RMethod{gofunc: RArray_to_s}
+	obj.methods["inspect"] = &RMethod{gofunc: RArray_inspect}
 	obj.methods["size"] = &RMethod{gofunc: RArray_length}
 	obj.methods["length"] = &RMethod{gofunc: RArray_length}
 
@@ -80,6 +81,22 @@ func RArray_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
 	}
 
 	return strings.Join(strList, "\n")
+}
+
+func RArray_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
+	obj := receiver.(*RObject)
+	internal_array := obj.ivars["array"].([]*RObject)
+	strList := make([]string, 0, len(internal_array))
+	for _, item := range internal_array {
+		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(string))
+	}
+
+	dummyList := []string{"[", strList[0]}
+	strList[0] = strings.Join(dummyList, "")
+	dummyList = []string{strList[len(strList)-1], "]"}
+	strList[len(strList)-1] = strings.Join(dummyList, "")
+
+	return strings.Join(strList, ", ")
 }
 
 func RArray_length(vm *GobiesVM, receiver Object, v []Object) Object {
