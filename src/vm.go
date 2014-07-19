@@ -48,13 +48,22 @@ func (obj *RObject) methodLookup(method_name string) *RMethod {
 	return nil
 }
 
+func (currentCallFrame *CallFrame) variableLookup(var_name string) Object {
+	if obj, ok := currentCallFrame.var_table[var_name]; ok {
+		return obj
+	}
+	if currentCallFrame.parent != nil {
+		return currentCallFrame.parent.variableLookup(var_name)
+	}
+	return nil
+}
+
 func (VM *GobiesVM) executeBytecode(instList []Instruction) {
 	if instList == nil {
 		instList = VM.instList
 	}
 	for _, v := range instList {
 		currentCallFrame := VM.callFrameStack[len(VM.callFrameStack)-1]
-		// fmt.Println(v)
 		switch v.inst_type {
 		case BC_PUTSELF:
 			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.me)
@@ -69,7 +78,7 @@ func (VM *GobiesVM) executeBytecode(instList []Instruction) {
 			currentCallFrame.var_table[v.obj.(string)] = top
 			currentCallFrame.stack = currentCallFrame.stack[0 : len(currentCallFrame.stack)-1]
 		case BC_GETLOCAL:
-			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.var_table[v.obj.(string)])
+			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.variableLookup(v.obj.(string)))
 		case BC_SETGLOBAL:
 		case BC_GETGLOBAL:
 		case BC_SETSYMBOL:
