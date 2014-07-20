@@ -15,6 +15,7 @@ func initRString() *RObject {
 	obj.methods["inspect"] = &RMethod{gofunc: RString_inspect}
 	obj.methods["size"] = &RMethod{gofunc: RString_length}
 	obj.methods["len"] = &RMethod{gofunc: RString_length}
+	obj.methods["split"] = &RMethod{gofunc: RString_split}
 
 	return obj
 }
@@ -51,4 +52,18 @@ func RString_length(vm *GobiesVM, receiver Object, v []Object) Object {
 	arg := make([]Object, 1, 1)
 	arg[0] = int64(len(obj.val.str))
 	return RFixnum_new(vm, receiver, arg)
+}
+
+func RString_split(vm *GobiesVM, receiver Object, v []Object) Object {
+	obj := receiver.(*RObject)
+	sep := v[0].(*RObject).val.str
+
+	strList := strings.Split(obj.val.str, sep)
+	arg := make([]Object, len(strList), len(strList))
+	for i, v := range strList {
+		dummy_arg := make([]Object, 1, 1)
+		dummy_arg[0] = v
+		arg[i] = RString_new(vm, nil, dummy_arg)
+	}
+	return RArray_new(vm, nil, arg)
 }
