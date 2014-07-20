@@ -204,6 +204,20 @@ func (VM *GobiesVM) compile(node *AST) {
 		VM.AddInstruction(BC_SEND, "new")
 		VM.instList[len(VM.instList)-1].argc = argc
 	case NODE_HASH:
+		args := node.args[0]
+		argc := 0
+		var head *AST
+		if args != nil {
+			argc = args.length
+			head = args.head
+		}
+		VM.AddInstruction(BC_GETCONST, "RHash")
+		for head != nil {
+			VM.compile(head)
+			head = head.next
+		}
+		VM.AddInstruction(BC_SEND, "new")
+		VM.instList[len(VM.instList)-1].argc = argc
 	case NODE_RANGE:
 	case NODE_GETIVAR:
 		name := node.args[0]
