@@ -190,8 +190,12 @@ func (VM *GobiesVM) compile(node *AST) {
 		VM.AddInstruction(BC_SETCONST, name.value.str)
 	case NODE_ARRAY:
 		args := node.args[0]
-		argc := args.length
-		head := args.head
+		argc := 0
+		var head *AST
+		if args != nil {
+			argc = args.length
+			head = args.head
+		}
 		VM.AddInstruction(BC_GETCONST, "RArray")
 		for head != nil {
 			VM.compile(head)

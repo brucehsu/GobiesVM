@@ -91,6 +91,10 @@ func RArray_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
 		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(string))
 	}
 
+	if len(strList) == 0 {
+		return "[]"
+	}
+
 	dummyList := []string{"[", strList[0]}
 	strList[0] = strings.Join(dummyList, "")
 	dummyList = []string{strList[len(strList)-1], "]"}
