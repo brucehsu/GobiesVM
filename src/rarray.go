@@ -27,15 +27,15 @@ func RArray_new(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := &RObject{}
 	obj.class = vm.consts["RArray"]
 	obj.ivars = make(map[string]Object)
-	obj.ivars["array"] = make([]*RObject, 0, 1024)
+	internal_array := []*RObject{}
 
 	if v != nil && len(v) > 0 {
 		for _, item := range v {
-			dummy_item := make([]Object, 1, 1)
-			dummy_item[0] = item
-			RArray_append(vm, obj, dummy_item)
+			internal_array = append(internal_array, item.(*RObject))
 		}
 	}
+
+	obj.ivars["array"] = internal_array
 
 	return obj
 }

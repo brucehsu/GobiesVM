@@ -23,19 +23,20 @@ func initRIO() *RObject {
 func RIO_readlines(vm *GobiesVM, receiver Object, v []Object) Object {
 	filename := v[0].(*RObject).val.str
 
-	obj := RArray_new(vm, receiver, nil)
-
 	content, _ := ioutil.ReadFile(filename)
 	str := string(content[:])
+
+	items := []Object{}
 
 	lines := strings.SplitAfter(str, "\n")
 	for _, line := range lines {
 		dummy_obj := make([]Object, 1, 1)
 		dummy_obj[0] = line
 		rstr := RString_new(vm, receiver, dummy_obj)
-		dummy_obj[0] = rstr
-		RArray_append(vm, obj, dummy_obj)
+		items = append(items, rstr)
 	}
+
+	obj := RArray_new(vm, receiver, items)
 
 	return obj
 }
