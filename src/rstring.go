@@ -66,9 +66,9 @@ func RString_split(vm *GobiesVM, receiver Object, v []Object) Object {
 		strList = strings.Split(obj.val.str, sep)
 	}
 
-	arg := make([]Object, len(strList), len(strList))
+	arg := make([]Object, len(strList))
+	dummy_arg := []Object{nil}
 	for i, v := range strList {
-		dummy_arg := make([]Object, 1, 1)
 		dummy_arg[0] = v
 		arg[i] = RString_new(vm, nil, dummy_arg)
 	}

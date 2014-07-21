@@ -46,9 +46,8 @@ func RFixnum_assign(vm *GobiesVM, receiver Object, v []Object) Object {
 }
 
 func RFixnum_add(vm *GobiesVM, receiver Object, v []Object) Object {
-	dummy_args := make([]Object, 1, 1)
 	obj := receiver.(*RObject)
-	dummy_args[0] = obj.val.fixnum
+	dummy_args := []Object{obj.val.fixnum}
 	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
 	obj.val.fixnum += v[0].(*RObject).val.fixnum
 
@@ -56,9 +55,8 @@ func RFixnum_add(vm *GobiesVM, receiver Object, v []Object) Object {
 }
 
 func RFixnum_sub(vm *GobiesVM, receiver Object, v []Object) Object {
-	dummy_args := make([]Object, 1, 1)
 	obj := receiver.(*RObject)
-	dummy_args[0] = obj.val.fixnum
+	dummy_args := []Object{obj.val.fixnum}
 	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
 	obj.val.fixnum -= v[0].(*RObject).val.fixnum
 
@@ -66,9 +64,8 @@ func RFixnum_sub(vm *GobiesVM, receiver Object, v []Object) Object {
 }
 
 func RFixnum_mul(vm *GobiesVM, receiver Object, v []Object) Object {
-	dummy_args := make([]Object, 1, 1)
 	obj := receiver.(*RObject)
-	dummy_args[0] = obj.val.fixnum
+	dummy_args := []Object{obj.val.fixnum}
 	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
 	obj.val.fixnum *= v[0].(*RObject).val.fixnum
 
@@ -76,9 +73,8 @@ func RFixnum_mul(vm *GobiesVM, receiver Object, v []Object) Object {
 }
 
 func RFixnum_div(vm *GobiesVM, receiver Object, v []Object) Object {
-	dummy_args := make([]Object, 1, 1)
 	obj := receiver.(*RObject)
-	dummy_args[0] = obj.val.fixnum
+	dummy_args := []Object{obj.val.fixnum}
 	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
 	obj.val.fixnum /= v[0].(*RObject).val.fixnum
 
@@ -98,8 +94,8 @@ func RFixnum_times(vm *GobiesVM, receiver Object, v []Object) Object {
 	if v != nil && len(v) == 1 { // Given a single RBlock
 		block := v[0].(*RObject)
 
-		params := make([]*RObject, 1, 1)
-		dummy_args := make([]Object, 1, 1)
+		dummy_args := []Object{0}
+		params := []*RObject{nil}
 
 		for i := int64(0); i < obj.val.fixnum; i++ {
 			// Prepare block arguments

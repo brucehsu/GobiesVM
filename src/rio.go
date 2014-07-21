@@ -27,10 +27,10 @@ func RIO_readlines(vm *GobiesVM, receiver Object, v []Object) Object {
 	str := string(content[:])
 
 	items := []Object{}
+	dummy_obj := []Object{nil}
 
 	lines := strings.SplitAfter(str, "\n")
 	for _, line := range lines {
-		dummy_obj := make([]Object, 1, 1)
 		dummy_obj[0] = line
 		rstr := RString_new(vm, receiver, dummy_obj)
 		items = append(items, rstr)

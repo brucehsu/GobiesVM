@@ -60,8 +60,7 @@ func (VM *GobiesVM) compile(node *AST) {
 				argc := params.length
 				param_array := RArray_new(VM, nil, nil)
 				for i := 0; i < argc; i++ {
-					dummy_arg := make([]Object, 1, 1)
-					dummy_arg[0] = params.args[0].value.str
+					dummy_arg := []Object{params.args[0].value.str}
 					param := RString_new(VM, nil, dummy_arg)
 					dummy_arg[0] = param
 					RArray_append(VM, param_array, dummy_arg)
@@ -77,24 +76,20 @@ func (VM *GobiesVM) compile(node *AST) {
 			if len(astval.value.str) != 0 { // SYMBOL
 				VM.AddInstruction(BC_SETSYMBOL, astval.value.str)
 			} else { // NUMBER
-				val := make([]Object, 1, 1)
-				val[0] = astval.value.numeric
+				val := []Object{astval.value.numeric}
 				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, val))
 			}
 		case NODE_ASTVAL:
 			if len(node.value.str) != 0 {
-				val := make([]Object, 1, 1)
-				val[0] = node.value.str
+				val := []Object{node.value.str}
 				VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, val))
 			} else {
-				val := make([]Object, 1, 1)
-				val[0] = node.value.numeric
+				val := []Object{node.value.numeric}
 				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, val))
 			}
 		case NODE_STRING:
 			astval := node.args[0]
-			val := make([]Object, 1, 1)
-			val[0] = astval.value.str
+			val := []Object{astval.value.str}
 			VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, val))
 		case NODE_ASSIGN:
 			// Set local variable

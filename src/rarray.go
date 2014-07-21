@@ -76,7 +76,7 @@ func RArray_assign_to_index(vm *GobiesVM, receiver Object, v []Object) Object {
 func RArray_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	internal_array := obj.ivars["array"].([]*RObject)
-	strList := make([]string, 0, len(internal_array))
+	strList := []string{}
 	for _, item := range internal_array {
 		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(string))
 	}
@@ -87,7 +87,7 @@ func RArray_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
 func RArray_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	internal_array := obj.ivars["array"].([]*RObject)
-	strList := make([]string, 0, len(internal_array))
+	strList := []string{}
 	for _, item := range internal_array {
 		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(string))
 	}
@@ -108,8 +108,7 @@ func RArray_length(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	internal_array := obj.ivars["array"].([]*RObject)
 
-	length := make([]Object, 1, 1)
-	length[0] = int64(len(internal_array))
+	length := []Object{int64(len(internal_array))}
 
 	return RFixnum_new(vm, receiver, length)
 }
@@ -123,7 +122,7 @@ func RArray_each(vm *GobiesVM, receiver Object, v []Object) Object {
 		block := v[0].(*RObject)
 		internal_array := obj.ivars["array"].([]*RObject)
 
-		params := make([]*RObject, 1, 1)
+		params := []*RObject{nil}
 
 		for i := 0; i < len(internal_array); i++ {
 			// Prepare block arguments
