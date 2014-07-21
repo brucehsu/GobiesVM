@@ -58,6 +58,9 @@ func RString_split(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	sep := v[0].(*RObject).val.str
 
+	// Manually escape linebreak if any
+	sep = strings.Replace(sep, "\\n", "\n", -1)
+
 	strList := strings.Split(obj.val.str, sep)
 	arg := make([]Object, len(strList), len(strList))
 	for i, v := range strList {
