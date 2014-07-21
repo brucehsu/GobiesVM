@@ -230,7 +230,19 @@ func (VM *GobiesVM) compile(node *AST) {
 	case NODE_GETGLOBAL:
 	case NODE_SETGLOBAL:
 	case NODE_ADD:
+		rcv := node.args[0]
+		args := node.args[1]
+		VM.compile(rcv)
+		VM.compile(args)
+		VM.AddInstruction(BC_SEND, "+")
+		VM.instList[len(VM.instList)-1].argc = 1
 	case NODE_SUB:
+		rcv := node.args[0]
+		args := node.args[1]
+		VM.compile(rcv)
+		VM.compile(args)
+		VM.AddInstruction(BC_SEND, "-")
+		VM.instList[len(VM.instList)-1].argc = 1
 	case NODE_LT:
 	case NODE_NEG:
 	case NODE_NOT:

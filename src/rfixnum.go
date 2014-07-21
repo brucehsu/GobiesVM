@@ -11,6 +11,11 @@ func initRFixnum() *RObject {
 
 	// RFixnum method initialization
 	obj.methods["new"] = &RMethod{gofunc: RFixnum_new}
+	obj.methods["="] = &RMethod{gofunc: RFixnum_assign}
+	obj.methods["+"] = &RMethod{gofunc: RFixnum_add}
+	obj.methods["-"] = &RMethod{gofunc: RFixnum_sub}
+	obj.methods["*"] = &RMethod{gofunc: RFixnum_mul}
+	obj.methods["/"] = &RMethod{gofunc: RFixnum_div}
 	obj.methods["to_s"] = &RMethod{gofunc: RFixnum_to_s}
 	obj.methods["inspect"] = &RMethod{gofunc: RFixnum_to_s}
 	obj.methods["times"] = &RMethod{gofunc: RFixnum_times}
@@ -29,6 +34,53 @@ func RFixnum_new(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := &RObject{}
 	obj.class = vm.consts["RFixnum"]
 	obj.val.fixnum = val
+
+	return obj
+}
+
+func RFixnum_assign(vm *GobiesVM, receiver Object, v []Object) Object {
+	obj := receiver.(*RObject)
+	obj.val.fixnum = v[0].(*RObject).val.fixnum
+
+	return obj
+}
+
+func RFixnum_add(vm *GobiesVM, receiver Object, v []Object) Object {
+	dummy_args := make([]Object, 1, 1)
+	obj := receiver.(*RObject)
+	dummy_args[0] = obj.val.fixnum
+	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
+	obj.val.fixnum += v[0].(*RObject).val.fixnum
+
+	return obj
+}
+
+func RFixnum_sub(vm *GobiesVM, receiver Object, v []Object) Object {
+	dummy_args := make([]Object, 1, 1)
+	obj := receiver.(*RObject)
+	dummy_args[0] = obj.val.fixnum
+	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
+	obj.val.fixnum -= v[0].(*RObject).val.fixnum
+
+	return obj
+}
+
+func RFixnum_mul(vm *GobiesVM, receiver Object, v []Object) Object {
+	dummy_args := make([]Object, 1, 1)
+	obj := receiver.(*RObject)
+	dummy_args[0] = obj.val.fixnum
+	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
+	obj.val.fixnum *= v[0].(*RObject).val.fixnum
+
+	return obj
+}
+
+func RFixnum_div(vm *GobiesVM, receiver Object, v []Object) Object {
+	dummy_args := make([]Object, 1, 1)
+	obj := receiver.(*RObject)
+	dummy_args[0] = obj.val.fixnum
+	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
+	obj.val.fixnum /= v[0].(*RObject).val.fixnum
 
 	return obj
 }
