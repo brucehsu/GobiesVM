@@ -57,11 +57,32 @@ func RString_length(vm *GobiesVM, receiver Object, v []Object) Object {
 func RString_split(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	sep := v[0].(*RObject).val.str
+	str := obj.val.str
 
-	// Manually escape linebreak if any
+	// Manually unescape linebreak if any
 	sep = strings.Replace(sep, "\\n", "\n", -1)
 
-	strList := strings.Split(obj.val.str, sep)
+	strList := []string{str}
+
+	// Split string individually for each separator
+	for _, pass := range sep {
+		oldStrList := []string{}
+
+		for _, item := range strList {
+			oldStrList = append(oldStrList, item)
+		}
+		strList = []string{}
+		for _, item := range oldStrList {
+			tempStrList := strings.Split(item, string(pass))
+			for _, splitted := range tempStrList {
+				if len(splitted) == 0 {
+					continue
+				}
+				strList = append(strList, splitted)
+			}
+		}
+	}
+
 	arg := make([]Object, len(strList), len(strList))
 	for i, v := range strList {
 		dummy_arg := make([]Object, 1, 1)
