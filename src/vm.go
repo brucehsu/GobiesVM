@@ -77,7 +77,8 @@ func (VM *GobiesVM) executeBytecode(instList []Instruction) {
 		case BC_SETLOCAL:
 			top := currentCallFrame.stack[len(currentCallFrame.stack)-1]
 			currentCallFrame.var_table[v.obj.(string)] = top
-			currentCallFrame.stack = currentCallFrame.stack[0 : len(currentCallFrame.stack)-1]
+			top.(*RObject).name = v.obj.(string)                                               // Change object from anonymous to named
+			currentCallFrame.stack = currentCallFrame.stack[0 : len(currentCallFrame.stack)-1] // Pop object from stack
 		case BC_GETLOCAL:
 			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.variableLookup(v.obj.(string)))
 		case BC_SETGLOBAL:
