@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	// "fmt"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"runtime"
@@ -10,13 +10,20 @@ import (
 
 func main() {
 	runtime.GOMAXPROCS(2)
+
+	// Flag initialization
+	var printAST, printInst bool
+	flag.BoolVar(&printAST, "ast", false, "Print abstract syntax tree structure")
+	flag.BoolVar(&printInst, "bytecode", false, "Print comprehensive bytecode instructions")
+
 	flag.Parse()
 
 	if flag.NArg() != 1 {
 		flag.Usage()
 		log.Fatalf("FILE: the .rb file to execute")
 	}
-	file := flag.Arg(0)
+
+	file := flag.Args()[0]
 
 	buffer, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -31,18 +38,28 @@ func main() {
 
 	p.Execute()
 
-	// Traverse(rootAST)
+	if printAST {
+		Traverse(rootAST)
+	}
 
 	vm := initVM()
 
 	vm.compile(rootAST)
-	vm.executeBytecode()
 
-	// fmt.Println("")
-	// fmt.Println(len(vm.instList))
-	// for _, v := range vm.instList {
-	// 	fmt.Println(v)
-	// 	fmt.Print("\t")
-	// 	fmt.Println(v.obj)
-	// }
+	if printInst {
+		printInstructions(vm.instList, true)
+	}
+
+	vm.executeBytecode(nil)
+}
+
+func printInstructions(inst []Instruction, blocks bool) {
+	for _, v := range inst {
+		fmt.Println(v)
+		fmt.Print("\t")
+		fmt.Println(v.obj)
+		if v.inst_type == BC_PUTOBJ && v.obj.(*RObject).name == "RBlock" {
+			printInstructions(v.obj.(*RObject).methods["def"].def, blocks)
+		}
+	}
 }
