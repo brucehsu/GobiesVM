@@ -14,6 +14,7 @@ func initRHash() *RObject {
 
 	// RHash method initialization
 	obj.methods["new"] = &RMethod{gofunc: RHash_new}
+	obj.methods["[]"] = &RMethod{gofunc: RHash_find_by_key}
 	obj.methods["[]="] = &RMethod{gofunc: RHash_assign_to_key}
 	obj.methods["inspect"] = &RMethod{gofunc: RHash_inspect}
 
@@ -37,6 +38,17 @@ func RHash_new(vm *GobiesVM, receiver Object, v []Object) Object {
 	}
 
 	return obj
+}
+
+func RHash_find_by_key(vm *GobiesVM, receiver Object, v []Object) Object {
+	obj := receiver.(*RObject)
+	hash := obj.ivars["map"].(map[RValue]*RObject)
+	val, ok := hash[v[0].(*RObject).val]
+
+	if !ok {
+		return nil
+	}
+	return val
 }
 
 func RHash_assign_to_key(vm *GobiesVM, receiver Object, v []Object) Object {
