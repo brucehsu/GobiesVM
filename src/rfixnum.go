@@ -47,36 +47,32 @@ func RFixnum_assign(vm *GobiesVM, receiver Object, v []Object) Object {
 
 func RFixnum_add(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
-	dummy_args := []Object{obj.val.fixnum}
+	dummy_args := []Object{obj.val.fixnum + v[0].(*RObject).val.fixnum}
 	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
-	obj.val.fixnum += v[0].(*RObject).val.fixnum
 
 	return obj
 }
 
 func RFixnum_sub(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
-	dummy_args := []Object{obj.val.fixnum}
+	dummy_args := []Object{obj.val.fixnum - v[0].(*RObject).val.fixnum}
 	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
-	obj.val.fixnum -= v[0].(*RObject).val.fixnum
 
 	return obj
 }
 
 func RFixnum_mul(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
-	dummy_args := []Object{obj.val.fixnum}
+	dummy_args := []Object{obj.val.fixnum * v[0].(*RObject).val.fixnum}
 	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
-	obj.val.fixnum *= v[0].(*RObject).val.fixnum
 
 	return obj
 }
 
 func RFixnum_div(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
-	dummy_args := []Object{obj.val.fixnum}
+	dummy_args := []Object{obj.val.fixnum / v[0].(*RObject).val.fixnum}
 	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
-	obj.val.fixnum /= v[0].(*RObject).val.fixnum
 
 	return obj
 }
