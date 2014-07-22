@@ -27,15 +27,16 @@ func RArray_new(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := &RObject{}
 	obj.class = vm.consts["RArray"]
 	obj.ivars = make(map[string]Object)
-	internal_array := []*RObject{}
 
 	if v != nil && len(v) > 0 {
-		for _, item := range v {
-			internal_array = append(internal_array, item.(*RObject))
+		internal_array := make([]*RObject, len(v))
+		for i, item := range v {
+			internal_array[i] = item.(*RObject)
 		}
+		obj.ivars["array"] = internal_array
+	} else {
+		obj.ivars["array"] = []*RObject{}
 	}
-
-	obj.ivars["array"] = internal_array
 
 	return obj
 }
@@ -124,7 +125,7 @@ func RArray_each(vm *GobiesVM, receiver Object, v []Object) Object {
 
 		params := []*RObject{nil}
 
-		for i := 0; i < len(internal_array); i++ {
+		for i, length := 0, len(internal_array); i < length; i++ {
 			// Prepare block arguments
 			params[0] = internal_array[i]
 

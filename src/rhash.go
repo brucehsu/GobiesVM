@@ -25,15 +25,13 @@ func RHash_new(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := &RObject{}
 	obj.class = vm.consts["RHash"]
 	obj.ivars = make(map[string]Object)
-	obj.ivars["map"] = make(map[RValue]*RObject)
+	internal_map := make(map[RValue]*RObject)
+	obj.ivars["map"] = internal_map
 
 	if v != nil && len(v) > 0 {
-		for i := 0; i < len(v); i += 2 {
-			key, val := v[i].(*RObject), v[i+1].(*RObject)
-			dummy_pair := make([]Object, 2, 2)
-			dummy_pair[0] = key
-			dummy_pair[1] = val
-			RHash_assign_to_key(vm, obj, dummy_pair)
+		for i, length := 0, len(v); i < length; i += 2 {
+			key, val := v[i].(*RObject).val, v[i+1].(*RObject)
+			internal_map[key] = val
 		}
 	}
 
