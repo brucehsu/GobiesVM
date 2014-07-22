@@ -22,6 +22,7 @@ const (
 	BC_GETCVAR
 	BC_SEND
 	BC_JUMP
+	BC_INITTRANS
 )
 
 type Instruction struct {
@@ -229,4 +230,30 @@ func (VM *GobiesVM) compile(node *AST) {
 		}
 		node = node.next
 	}
+}
+
+func findTransactions(instList []Instruction) []Instruction {
+FIND_TRANSACTION_BEGIN:
+	for i, node := range instList {
+		if node.inst_type == BC_GETCONST && node.obj.(string) == "Thread" {
+			// Assume Thread always comes with .new(&block)
+			block := instList[i+1].obj.(*RObject)
+			node.inst_type = BC_INITTRANS
+			node.obj = block
+			instList[i] = node
+			instList = append(instList[:i+1], instList[i+3:]...)
+			goto FIND_TRANSACTION_BEGIN
+		} else {
+			if node.inst_type == BC_PUTOBJ {
+				switch node.obj.(type) {
+				case *RObject:
+					obj := node.obj.(*RObject)
+					if obj.name == "RBlock" {
+						obj.methods["def"].def = findTransactions(obj.methods["def"].def)
+					}
+				}
+			}
+		}
+	}
+	return instList
 }

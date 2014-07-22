@@ -45,6 +45,7 @@ func main() {
 	vm := initVM()
 
 	vm.compile(rootAST)
+	findTransactions(vm.instList)
 
 	if printInst {
 		printInstructions(vm.instList, true)
@@ -58,7 +59,7 @@ func printInstructions(inst []Instruction, blocks bool) {
 		fmt.Println(v)
 		fmt.Print("\t")
 		fmt.Println(v.obj)
-		if v.inst_type == BC_PUTOBJ && v.obj.(*RObject).name == "RBlock" {
+		if (v.inst_type == BC_PUTOBJ || v.inst_type == BC_INITTRANS) && v.obj.(*RObject).name == "RBlock" {
 			printInstructions(v.obj.(*RObject).methods["def"].def, blocks)
 		}
 	}
