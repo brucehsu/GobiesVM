@@ -79,10 +79,10 @@ func RArray_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
 	internal_array := obj.ivars["array"].([]*RObject)
 	strList := []string{}
 	for _, item := range internal_array {
-		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(string))
+		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(*RObject).val.str)
 	}
 
-	return strings.Join(strList, "\n")
+	return RString_new(vm, nil, []Object{strings.Join(strList, "\n")})
 }
 
 func RArray_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
@@ -90,19 +90,17 @@ func RArray_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
 	internal_array := obj.ivars["array"].([]*RObject)
 	strList := []string{}
 	for _, item := range internal_array {
-		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(string))
+		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(*RObject).val.str)
 	}
 
 	if len(strList) == 0 {
 		return "[]"
 	}
 
-	dummyList := []string{"[", strList[0]}
-	strList[0] = strings.Join(dummyList, "")
-	dummyList = []string{strList[len(strList)-1], "]"}
-	strList[len(strList)-1] = strings.Join(dummyList, "")
+	strList[0] = "[" + strList[0]
+	strList[len(strList)-1] = strList[len(strList)-1] + "]"
 
-	return strings.Join(strList, ", ")
+	return RString_new(vm, nil, []Object{strings.Join(strList, ", ")})
 }
 
 func RArray_length(vm *GobiesVM, receiver Object, v []Object) Object {

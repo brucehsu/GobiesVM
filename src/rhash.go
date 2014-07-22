@@ -16,6 +16,7 @@ func initRHash() *RObject {
 	obj.methods["new"] = &RMethod{gofunc: RHash_new}
 	obj.methods["[]"] = &RMethod{gofunc: RHash_find_by_key}
 	obj.methods["[]="] = &RMethod{gofunc: RHash_assign_to_key}
+	obj.methods["to_s"] = &RMethod{gofunc: RHash_inspect}
 	obj.methods["inspect"] = &RMethod{gofunc: RHash_inspect}
 
 	return obj
@@ -64,7 +65,7 @@ func RHash_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
 	hash := obj.ivars["map"].(map[RValue]*RObject)
 
 	if len(hash) == 0 {
-		return "[]"
+		return RString_new(vm, nil, []Object{"[]"})
 	}
 
 	strList := make([]string, 0, 0)
@@ -76,13 +77,11 @@ func RHash_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
 		} else { // Currently we only have fixnum
 			valStr[0] = strconv.FormatInt(key.fixnum, 10)
 		}
-		valStr[1] = val.methodLookup("inspect").gofunc(vm, val, nil).(string)
+		valStr[1] = val.methodLookup("inspect").gofunc(vm, val, nil).(*RObject).val.str
 		strList = append(strList, strings.Join(valStr, "=>"))
 	}
 
 	finalStr := strings.Join(strList, ", ")
 
-	strList = []string{"{", finalStr, "}"}
-
-	return strings.Join(strList, "")
+	return RString_new(vm, nil, []Object{"{" + finalStr + "}"})
 }

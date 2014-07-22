@@ -79,7 +79,7 @@ func RFixnum_div(vm *GobiesVM, receiver Object, v []Object) Object {
 
 func RFixnum_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
-	return strconv.FormatInt(obj.val.fixnum, 10)
+	return RString_new(vm, nil, []Object{strconv.FormatInt(obj.val.fixnum, 10)})
 }
 
 // RFixnum.times(&block)

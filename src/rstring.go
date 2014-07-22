@@ -37,14 +37,13 @@ func RString_new(vm *GobiesVM, receiver Object, v []Object) Object {
 
 func RString_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
-	return obj.val.str
+	return obj
 }
 
 func RString_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	str := obj.val.str
-	array := []string{"'", str, "'"}
-	return strings.Join(array, "")
+	return RString_new(vm, nil, []Object{"'" + str + "'"})
 }
 
 func RString_length(vm *GobiesVM, receiver Object, v []Object) Object {
