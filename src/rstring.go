@@ -11,6 +11,7 @@ func initRString() *RObject {
 
 	// RString method initialization
 	obj.methods["new"] = &RMethod{gofunc: RString_new}
+	obj.methods["+"] = &RMethod{gofunc: RString_concat}
 	obj.methods["to_s"] = &RMethod{gofunc: RString_to_s}
 	obj.methods["inspect"] = &RMethod{gofunc: RString_inspect}
 	obj.methods["size"] = &RMethod{gofunc: RString_length}
@@ -33,6 +34,13 @@ func RString_new(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj.val.str = str
 
 	return obj
+}
+
+func RString_concat(vm *GobiesVM, receiver Object, v []Object) Object {
+	obj := receiver.(*RObject)
+	substr := v[0].(*RObject).val.str
+
+	return RString_new(vm, nil, []Object{obj.val.str + substr})
 }
 
 func RString_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
