@@ -93,7 +93,6 @@ func (VM *GobiesVM) executeBytecode(instList []Instruction) {
 		case BC_SETCVAR:
 		case BC_GETCVAR:
 		case BC_SEND:
-			// fmt.Println(currentCallFrame.stack)
 			argLists := currentCallFrame.stack[len(currentCallFrame.stack)-(v.argc+1):] // argc + 1 ensures inclusion of receiver
 			currentCallFrame.stack = currentCallFrame.stack[:len(currentCallFrame.stack)-(v.argc+1)]
 			recv := argLists[0].(*RObject)

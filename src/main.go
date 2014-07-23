@@ -54,11 +54,33 @@ func main() {
 }
 
 func printInstructions(inst []Instruction, blocks bool) {
+	BytecodeInString := []string{
+		"BC_PUTSELF",
+		"BC_PUTNIL",
+		"BC_PUTOBJ",
+		"BC_PUTTRUE",
+		"BC_PUTFALSE",
+		"BC_SETLOCAL",
+		"BC_GETLOCAL",
+		"BC_SETGLOBAL",
+		"BC_GETGLOBAL",
+		"BC_SETSYMBOL",
+		"BC_GETSYMBOL",
+		"BC_SETCONST",
+		"BC_GETCONST",
+		"BC_SETIVAR",
+		"BC_GETIVAR",
+		"BC_SETCVAR",
+		"BC_GETCVAR",
+		"BC_SEND",
+		"BC_JUMP",
+	}
 	for _, v := range inst {
-		fmt.Println(v)
+		fmt.Println(BytecodeInString[v.inst_type], v)
 		fmt.Print("\t")
 		fmt.Println(v.obj)
-		if v.inst_type == BC_PUTOBJ && v.obj.(*RObject).name == "RBlock" {
+
+		if blocks && (v.inst_type == BC_PUTOBJ) && v.obj.(*RObject).name == "RBlock" {
 			printInstructions(v.obj.(*RObject).methods["def"].def, blocks)
 		}
 	}
