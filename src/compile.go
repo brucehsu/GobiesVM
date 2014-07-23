@@ -242,7 +242,15 @@ FIND_TRANSACTION_BEGIN:
 			node.inst_type = BC_INITTRANS
 			node.obj = block
 			instList[i] = node
-			instList = append(instList[:i+1], instList[i+3:]...)
+
+			newInstList := make([]Instruction, 0, len(instList))
+			for j := 0; j <= i; j++ {
+				newInstList = append(newInstList, instList[j])
+			}
+			for j := i + 3; j < len(instList); j++ {
+				newInstList = append(newInstList, instList[j])
+			}
+			instList = newInstList
 			goto FIND_TRANSACTION_BEGIN
 		} else {
 			if node.inst_type == BC_PUTOBJ {
