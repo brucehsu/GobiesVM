@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	runtime.GOMAXPROCS(2)
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// Flag initialization
 	var printAST, printInst bool
@@ -51,7 +51,7 @@ func main() {
 		printInstructions(vm.instList, true)
 	}
 
-	vm.executeBytecode(nil)
+	vm.execute()
 }
 
 func printInstructions(inst []Instruction, blocks bool) {

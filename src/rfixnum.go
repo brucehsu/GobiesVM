@@ -25,7 +25,7 @@ func initRFixnum() *RObject {
 
 // Fixnum.new(int=0)
 // v = [int64]
-func RFixnum_new(vm *GobiesVM, receiver Object, v []Object) Object {
+func RFixnum_new(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	val := int64(0)
 	if len(v) == 1 {
 		val = v[0].(int64)
@@ -34,58 +34,59 @@ func RFixnum_new(vm *GobiesVM, receiver Object, v []Object) Object {
 	obj := &RObject{}
 	obj.class = vm.consts["RFixnum"]
 	obj.val.fixnum = val
+	obj.rev = vm.rev
 
 	return obj
 }
 
-func RFixnum_assign(vm *GobiesVM, receiver Object, v []Object) Object {
+func RFixnum_assign(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	obj.val.fixnum = v[0].(*RObject).val.fixnum
 
 	return obj
 }
 
-func RFixnum_add(vm *GobiesVM, receiver Object, v []Object) Object {
+func RFixnum_add(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	dummy_args := []Object{obj.val.fixnum + v[0].(*RObject).val.fixnum}
-	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
+	obj = RFixnum_new(vm, t, nil, dummy_args).(*RObject)
 
 	return obj
 }
 
-func RFixnum_sub(vm *GobiesVM, receiver Object, v []Object) Object {
+func RFixnum_sub(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	dummy_args := []Object{obj.val.fixnum - v[0].(*RObject).val.fixnum}
-	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
+	obj = RFixnum_new(vm, t, nil, dummy_args).(*RObject)
 
 	return obj
 }
 
-func RFixnum_mul(vm *GobiesVM, receiver Object, v []Object) Object {
+func RFixnum_mul(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	dummy_args := []Object{obj.val.fixnum * v[0].(*RObject).val.fixnum}
-	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
+	obj = RFixnum_new(vm, t, nil, dummy_args).(*RObject)
 
 	return obj
 }
 
-func RFixnum_div(vm *GobiesVM, receiver Object, v []Object) Object {
+func RFixnum_div(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	dummy_args := []Object{obj.val.fixnum / v[0].(*RObject).val.fixnum}
-	obj = RFixnum_new(vm, nil, dummy_args).(*RObject)
+	obj = RFixnum_new(vm, t, nil, dummy_args).(*RObject)
 
 	return obj
 }
 
-func RFixnum_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
+func RFixnum_to_s(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
-	return RString_new(vm, nil, []Object{strconv.FormatInt(obj.val.fixnum, 10)})
+	return RString_new(vm, t, nil, []Object{strconv.FormatInt(obj.val.fixnum, 10)})
 }
 
 // RFixnum.times(&block)
 // Given: [RBlock]
 // Block parameters: [i]
-func RFixnum_times(vm *GobiesVM, receiver Object, v []Object) Object {
+func RFixnum_times(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	if v != nil && len(v) == 1 { // Given a single RBlock
 		block := v[0].(*RObject)
@@ -96,10 +97,10 @@ func RFixnum_times(vm *GobiesVM, receiver Object, v []Object) Object {
 		for i := int64(0); i < obj.val.fixnum; i++ {
 			// Prepare block arguments
 			dummy_args[0] = i
-			params[0] = RFixnum_new(vm, nil, dummy_args).(*RObject)
+			params[0] = RFixnum_new(vm, t, nil, dummy_args).(*RObject)
 
 			// Let VM handle all other stuff such as clean call frame
-			vm.executeBlock(block, params)
+			vm.executeBlock(t, block, params)
 		}
 	}
 	return obj

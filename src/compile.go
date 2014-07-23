@@ -44,6 +44,7 @@ func (VM *GobiesVM) compile(node *AST) {
 	for node != nil {
 		switch node.Type {
 		case NODE_ROOT:
+			// VM.AddInstruction(BC_INITTRANS, nil) Dont need init transaction since root should be one inevitable
 			head := node.args[0]
 			VM.compile(head)
 		case NODE_LIST:
@@ -59,12 +60,12 @@ func (VM *GobiesVM) compile(node *AST) {
 
 			if params != nil { // Block has params
 				argc := params.length
-				param_array := RArray_new(VM, nil, nil)
+				param_array := RArray_new(VM, nil, nil, nil)
 				for i := 0; i < argc; i++ {
 					dummy_arg := []Object{params.args[0].value.str}
-					param := RString_new(VM, nil, dummy_arg)
+					param := RString_new(VM, nil, nil, dummy_arg)
 					dummy_arg[0] = param
-					RArray_append(VM, param_array, dummy_arg)
+					RArray_append(VM, nil, param_array, dummy_arg)
 					params = params.next
 				}
 				block.ivars["params"] = param_array
@@ -78,20 +79,20 @@ func (VM *GobiesVM) compile(node *AST) {
 				VM.AddInstruction(BC_SETSYMBOL, astval.value.str)
 			} else { // NUMBER
 				val := []Object{astval.value.numeric}
-				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, val))
+				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, nil, val))
 			}
 		case NODE_ASTVAL:
 			if len(node.value.str) != 0 {
 				val := []Object{node.value.str}
-				VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, val))
+				VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, nil, val))
 			} else {
 				val := []Object{node.value.numeric}
-				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, val))
+				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, nil, val))
 			}
 		case NODE_STRING:
 			astval := node.args[0]
 			val := []Object{astval.value.str}
-			VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, val))
+			VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, nil, val))
 		case NODE_ASSIGN:
 			// Set local variable
 			astval := node.args[0]

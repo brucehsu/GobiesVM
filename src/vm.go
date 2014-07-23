@@ -1,5 +1,12 @@
 package main
 
+import (
+	"sync"
+	"sync/atomic"
+)
+
+var wg sync.WaitGroup
+
 type CallFrame struct {
 	parent    *CallFrame
 	var_table map[string]Object
@@ -7,11 +14,22 @@ type CallFrame struct {
 	me        Object
 }
 
+type Transaction struct {
+	instList            []Instruction
+	objectSet           map[*RObject]*RObject
+	localCallFrameStack []*CallFrame
+	inevitable          bool
+	rev                 int64
+}
+
 type GobiesVM struct {
 	instList       []Instruction
 	callFrameStack []*CallFrame
 	consts         map[string]*RObject
 	symbols        map[string]int
+	rev            int64
+	globalLock     sync.RWMutex
+	has_inevitable int32
 }
 
 func initVM() *GobiesVM {
@@ -59,9 +77,60 @@ func (currentCallFrame *CallFrame) variableLookup(var_name string) Object {
 	return nil
 }
 
-func (VM *GobiesVM) executeBytecode(instList []Instruction) {
+func initTransaction(instList []Instruction) *Transaction {
+	t := &Transaction{}
+	t.instList = []Instruction{}
+	for _, inst := range instList {
+		t.instList = append(t.instList, inst)
+	}
+	return t
+}
+
+func (VM *GobiesVM) execute() {
+	root := initTransaction(VM.instList)
+	root.inevitable = true
+
+	VM.rev = 0
+
+	// Execute root transaction which is inevitable
+	wg.Add(1)
+	go VM.executeTransaction(root)
+
+	wg.Wait()
+}
+
+func (VM *GobiesVM) executeTransaction(t *Transaction) {
+	// Initialize environment
+	if t.inevitable {
+		VM.globalLock.Lock()
+		atomic.StoreInt32(&VM.has_inevitable, 1)
+	} else {
+		VM.globalLock.RLock()
+	}
+	t.rev = atomic.LoadInt64(&VM.rev)
+
+	// Run through a speculative execution
+	VM.executeBytecodes(nil, t)
+
+	// Lock the write-set
+
+	// Increment global revision
+
+	// Validate the read-set
+
+	// Commit and release the locks
+	if t.inevitable {
+		VM.globalLock.Unlock()
+		atomic.StoreInt32(&VM.has_inevitable, 0)
+	} else {
+		VM.globalLock.RUnlock()
+	}
+	wg.Done()
+}
+
+func (VM *GobiesVM) executeBytecodes(instList []Instruction, t *Transaction) {
 	if instList == nil {
-		instList = VM.instList
+		instList = t.instList
 	}
 	for _, v := range instList {
 		currentCallFrame := VM.callFrameStack[len(VM.callFrameStack)-1]
@@ -98,16 +167,21 @@ func (VM *GobiesVM) executeBytecode(instList []Instruction) {
 			currentCallFrame.stack = currentCallFrame.stack[:len(currentCallFrame.stack)-(v.argc+1)]
 			recv := argLists[0].(*RObject)
 			argLists = argLists[1:]
-			return_val := recv.methodLookup(v.obj.(string)).gofunc(VM, recv, argLists)
+			return_val := recv.methodLookup(v.obj.(string)).gofunc(VM, t, recv, argLists)
 			if return_val != nil {
 				currentCallFrame.stack = append(currentCallFrame.stack, return_val)
 			}
 		case BC_JUMP:
+		case BC_INITTRANS:
+			nt := initTransaction(v.obj.(*RObject).methods["def"].def)
+			nt.inevitable = true
+			wg.Add(1)
+			go VM.executeTransaction(nt)
 		}
 	}
 }
 
-func (VM *GobiesVM) executeBlock(block *RObject, args []*RObject) {
+func (VM *GobiesVM) executeBlock(t *Transaction, block *RObject, args []*RObject) {
 	// Create clean call frame
 	currentCallFrame := initCallFrame()
 	currentCallFrame.parent = VM.callFrameStack[len(VM.callFrameStack)-1]
@@ -124,7 +198,7 @@ func (VM *GobiesVM) executeBlock(block *RObject, args []*RObject) {
 	}
 
 	// Execute block definition
-	VM.executeBytecode(block.methods["def"].def)
+	VM.executeBytecodes(block.methods["def"].def, t)
 
 	// Pop temporary call frame
 	VM.callFrameStack = VM.callFrameStack[:len(VM.callFrameStack)-1]

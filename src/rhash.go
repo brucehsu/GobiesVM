@@ -22,11 +22,12 @@ func initRHash() *RObject {
 	return obj
 }
 
-func RHash_new(vm *GobiesVM, receiver Object, v []Object) Object {
+func RHash_new(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := &RObject{}
 	obj.class = vm.consts["RHash"]
 	obj.ivars = make(map[string]Object)
 	internal_map := make(map[RValue]*RObject)
+	obj.rev = vm.rev
 	obj.ivars["map"] = internal_map
 
 	if v != nil && len(v) > 0 {
@@ -39,7 +40,7 @@ func RHash_new(vm *GobiesVM, receiver Object, v []Object) Object {
 	return obj
 }
 
-func RHash_find_by_key(vm *GobiesVM, receiver Object, v []Object) Object {
+func RHash_find_by_key(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	hash := obj.ivars["map"].(map[RValue]*RObject)
 	val, ok := hash[v[0].(*RObject).val]
@@ -50,7 +51,7 @@ func RHash_find_by_key(vm *GobiesVM, receiver Object, v []Object) Object {
 	return val
 }
 
-func RHash_assign_to_key(vm *GobiesVM, receiver Object, v []Object) Object {
+func RHash_assign_to_key(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	hash := obj.ivars["map"].(map[RValue]*RObject)
 	if v != nil && len(v) == 2 {
@@ -60,12 +61,12 @@ func RHash_assign_to_key(vm *GobiesVM, receiver Object, v []Object) Object {
 	return obj
 }
 
-func RHash_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
+func RHash_inspect(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	hash := obj.ivars["map"].(map[RValue]*RObject)
 
 	if len(hash) == 0 {
-		return RString_new(vm, nil, []Object{"[]"})
+		return RString_new(vm, t, nil, []Object{"[]"})
 	}
 
 	strList := make([]string, 0, 0)
@@ -77,11 +78,11 @@ func RHash_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
 		} else { // Currently we only have fixnum
 			valStr[0] = strconv.FormatInt(key.fixnum, 10)
 		}
-		valStr[1] = val.methodLookup("inspect").gofunc(vm, val, nil).(*RObject).val.str
+		valStr[1] = val.methodLookup("inspect").gofunc(vm, t, val, nil).(*RObject).val.str
 		strList = append(strList, strings.Join(valStr, "=>"))
 	}
 
 	finalStr := strings.Join(strList, ", ")
 
-	return RString_new(vm, nil, []Object{"{" + finalStr + "}"})
+	return RString_new(vm, t, nil, []Object{"{" + finalStr + "}"})
 }

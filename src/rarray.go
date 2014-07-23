@@ -23,10 +23,11 @@ func initRArray() *RObject {
 	return obj
 }
 
-func RArray_new(vm *GobiesVM, receiver Object, v []Object) Object {
+func RArray_new(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := &RObject{}
 	obj.class = vm.consts["RArray"]
 	obj.ivars = make(map[string]Object)
+	obj.rev = vm.rev
 
 	if v != nil && len(v) > 0 {
 		internal_array := make([]*RObject, len(v))
@@ -43,7 +44,7 @@ func RArray_new(vm *GobiesVM, receiver Object, v []Object) Object {
 
 // array << obj
 // [*RObject]
-func RArray_append(vm *GobiesVM, receiver Object, v []Object) Object {
+func RArray_append(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	internal_array := obj.ivars["array"].([]*RObject)
 
@@ -52,7 +53,7 @@ func RArray_append(vm *GobiesVM, receiver Object, v []Object) Object {
 	return obj
 }
 
-func RArray_at(vm *GobiesVM, receiver Object, v []Object) Object {
+func RArray_at(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	internal_array := obj.ivars["array"].([]*RObject)
 
@@ -61,7 +62,7 @@ func RArray_at(vm *GobiesVM, receiver Object, v []Object) Object {
 	return internal_array[idx]
 }
 
-func RArray_assign_to_index(vm *GobiesVM, receiver Object, v []Object) Object {
+func RArray_assign_to_index(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	internal_array := obj.ivars["array"].([]*RObject)
 
@@ -74,23 +75,23 @@ func RArray_assign_to_index(vm *GobiesVM, receiver Object, v []Object) Object {
 	return val
 }
 
-func RArray_to_s(vm *GobiesVM, receiver Object, v []Object) Object {
+func RArray_to_s(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	internal_array := obj.ivars["array"].([]*RObject)
 	strList := []string{}
 	for _, item := range internal_array {
-		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(*RObject).val.str)
+		strList = append(strList, item.methodLookup("to_s").gofunc(vm, t, item, v).(*RObject).val.str)
 	}
 
-	return RString_new(vm, nil, []Object{strings.Join(strList, "\n")})
+	return RString_new(vm, t, nil, []Object{strings.Join(strList, "\n")})
 }
 
-func RArray_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
+func RArray_inspect(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	internal_array := obj.ivars["array"].([]*RObject)
 	strList := []string{}
 	for _, item := range internal_array {
-		strList = append(strList, item.methodLookup("to_s").gofunc(vm, item, v).(*RObject).val.str)
+		strList = append(strList, item.methodLookup("to_s").gofunc(vm, t, item, v).(*RObject).val.str)
 	}
 
 	if len(strList) == 0 {
@@ -100,22 +101,22 @@ func RArray_inspect(vm *GobiesVM, receiver Object, v []Object) Object {
 	strList[0] = "[" + strList[0]
 	strList[len(strList)-1] = strList[len(strList)-1] + "]"
 
-	return RString_new(vm, nil, []Object{strings.Join(strList, ", ")})
+	return RString_new(vm, t, nil, []Object{strings.Join(strList, ", ")})
 }
 
-func RArray_length(vm *GobiesVM, receiver Object, v []Object) Object {
+func RArray_length(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	internal_array := obj.ivars["array"].([]*RObject)
 
 	length := []Object{int64(len(internal_array))}
 
-	return RFixnum_new(vm, receiver, length)
+	return RFixnum_new(vm, t, receiver, length)
 }
 
 // RArray.each(&block)
 // Given: [RBlock]
 // Block parameters: [item]
-func RArray_each(vm *GobiesVM, receiver Object, v []Object) Object {
+func RArray_each(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
 	obj := receiver.(*RObject)
 	if v != nil && len(v) == 1 { // Given a single RBlock
 		block := v[0].(*RObject)
@@ -128,7 +129,7 @@ func RArray_each(vm *GobiesVM, receiver Object, v []Object) Object {
 			params[0] = internal_array[i]
 
 			// Let VM handle all other stuff such as clean call frame
-			vm.executeBlock(block, params)
+			vm.executeBlock(t, block, params)
 		}
 	}
 	return obj
