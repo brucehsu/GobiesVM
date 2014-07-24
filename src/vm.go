@@ -87,16 +87,30 @@ func initTransaction(instList []Instruction) *Transaction {
 }
 
 func (VM *GobiesVM) execute() {
-	root := initTransaction(VM.instList)
-	root.inevitable = true
+	// 	root := initTransaction(VM.instList)
+	// 	root.inevitable = true
 
 	VM.rev = 0
 
 	// Execute root transaction which is inevitable
 	wg.Add(1)
-	go VM.executeTransaction(root)
+	go VM.executeThread(VM.instList)
 
 	wg.Wait()
+}
+
+func (VM *GobiesVM) executeThread(instList []Instruction) {
+	// Create clean call frame without pushing back to VM stack
+	currentCallFrame := initCallFrame()
+	currentCallFrame.parent = VM.callFrameStack[len(VM.callFrameStack)-1]
+	currentCallFrame.me = currentCallFrame.parent.me
+
+	// Determine transactions and execute them
+	t := initTransaction(instList)
+	t.localCallFrameStack = append(t.localCallFrameStack, currentCallFrame)
+	// t.inevitable = true
+	VM.executeTransaction(t)
+	wg.Done()
 }
 
 func (VM *GobiesVM) executeTransaction(t *Transaction) {
@@ -110,6 +124,7 @@ func (VM *GobiesVM) executeTransaction(t *Transaction) {
 	t.rev = atomic.LoadInt64(&VM.rev)
 
 	// Run through a speculative execution
+	// Create clean call frame without pushing back to VM stack
 	VM.executeBytecodes(nil, t)
 
 	// Lock the write-set
@@ -125,7 +140,6 @@ func (VM *GobiesVM) executeTransaction(t *Transaction) {
 	} else {
 		VM.globalLock.RUnlock()
 	}
-	wg.Done()
 }
 
 func (VM *GobiesVM) executeBytecodes(instList []Instruction, t *Transaction) {
@@ -133,7 +147,9 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, t *Transaction) {
 		instList = t.instList
 	}
 	for _, v := range instList {
-		currentCallFrame := VM.callFrameStack[len(VM.callFrameStack)-1]
+		// currentCallFrame := VM.callFrameStack[len(VM.callFrameStack)-1]
+		currentCallFrame := t.localCallFrameStack[len(t.localCallFrameStack)-1]
+		// printInstructions([]Instruction{v}, false)
 		switch v.inst_type {
 		case BC_PUTSELF:
 			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.me)
@@ -176,11 +192,9 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, t *Transaction) {
 				currentCallFrame.stack = append(currentCallFrame.stack, return_val)
 			}
 		case BC_JUMP:
-		case BC_INITTRANS:
-			nt := initTransaction(v.obj.(*RObject).methods["def"].def)
-			nt.inevitable = true
+		case BC_INIT_THREAD:
 			wg.Add(1)
-			go VM.executeTransaction(nt)
+			go VM.executeThread(v.obj.(*RObject).methods["def"].def)
 		}
 	}
 }
@@ -188,9 +202,9 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, t *Transaction) {
 func (VM *GobiesVM) executeBlock(t *Transaction, block *RObject, args []*RObject) {
 	// Create clean call frame
 	currentCallFrame := initCallFrame()
-	currentCallFrame.parent = VM.callFrameStack[len(VM.callFrameStack)-1]
+	currentCallFrame.parent = t.localCallFrameStack[len(t.localCallFrameStack)-1]
 	currentCallFrame.me = currentCallFrame.parent.me
-	VM.callFrameStack = append(VM.callFrameStack, currentCallFrame)
+	t.localCallFrameStack = append(t.localCallFrameStack, currentCallFrame)
 
 	// Fill in arguments to current call frame
 	if block.ivars["params"] != nil {
@@ -205,5 +219,5 @@ func (VM *GobiesVM) executeBlock(t *Transaction, block *RObject, args []*RObject
 	VM.executeBytecodes(block.methods["def"].def, t)
 
 	// Pop temporary call frame
-	VM.callFrameStack = VM.callFrameStack[:len(VM.callFrameStack)-1]
+	t.localCallFrameStack = t.localCallFrameStack[:len(t.localCallFrameStack)-1]
 }

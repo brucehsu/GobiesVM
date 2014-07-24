@@ -24,7 +24,7 @@ const (
 	BC_GETCVAR
 	BC_SEND
 	BC_JUMP
-	BC_INITTRANS
+	BC_INIT_THREAD
 )
 
 type Instruction struct {
@@ -241,7 +241,7 @@ FIND_TRANSACTION_BEGIN:
 		if node.inst_type == BC_GETCONST && node.obj.(string) == "Thread" {
 			// Assume Thread always comes with .new(&block)
 			block := instList[i+1].obj.(*RObject)
-			node.inst_type = BC_INITTRANS
+			node.inst_type = BC_INIT_THREAD
 			node.obj = block
 			instList[i] = node
 
