@@ -141,6 +141,10 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, t *Transaction) {
 			currentCallFrame.stack = append(currentCallFrame.stack, nil)
 		case BC_PUTOBJ:
 			currentCallFrame.stack = append(currentCallFrame.stack, v.obj)
+		case BC_PUTFIXNUM:
+			currentCallFrame.stack = append(currentCallFrame.stack, RFixnum_new(VM, nil, nil, v.obj.([]Object)))
+		case BC_PUTSTRING:
+			currentCallFrame.stack = append(currentCallFrame.stack, RString_new(VM, nil, nil, v.obj.([]Object)))
 		case BC_PUTTRUE:
 		case BC_PUTFALSE:
 		case BC_SETLOCAL:

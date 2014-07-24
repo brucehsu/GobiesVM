@@ -6,6 +6,8 @@ const (
 	BC_PUTSELF Bytecode = iota
 	BC_PUTNIL
 	BC_PUTOBJ
+	BC_PUTFIXNUM
+	BC_PUTSTRING
 	BC_PUTTRUE
 	BC_PUTFALSE
 	BC_SETLOCAL
@@ -79,20 +81,20 @@ func (VM *GobiesVM) compile(node *AST) {
 				VM.AddInstruction(BC_SETSYMBOL, astval.value.str)
 			} else { // NUMBER
 				val := []Object{astval.value.numeric}
-				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, nil, val))
+				VM.AddInstruction(BC_PUTFIXNUM, val)
 			}
 		case NODE_ASTVAL:
 			if len(node.value.str) != 0 {
 				val := []Object{node.value.str}
-				VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, nil, val))
+				VM.AddInstruction(BC_PUTSTRING, val)
 			} else {
 				val := []Object{node.value.numeric}
-				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, nil, val))
+				VM.AddInstruction(BC_PUTFIXNUM, val)
 			}
 		case NODE_STRING:
 			astval := node.args[0]
 			val := []Object{astval.value.str}
-			VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, nil, val))
+			VM.AddInstruction(BC_PUTSTRING, val)
 		case NODE_ASSIGN:
 			// Set local variable
 			astval := node.args[0]
