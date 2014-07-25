@@ -352,4 +352,6 @@ func (VM *GobiesVM) executeBlock(env *ThreadEnv, block *RObject, args []*RObject
 
 	// Execute block definition
 	VM.executeBytecodes(block.methods["def"].def, env)
+
+	VM.transactionBegin(env, []Instruction{})
 }
