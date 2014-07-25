@@ -20,18 +20,30 @@ func (obj *RObject) initRKernelMethods() {
 	obj.methods["p"] = &RMethod{gofunc: RKernel_p}
 }
 
-func RKernel_puts(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
+// Irreversible IO functions
+func RKernel_puts(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	vm.transactionEnd(env)
+
 	for _, obj := range v {
 		robj := obj.(*RObject)
-		fmt.Println(robj.methodLookup("to_s").gofunc(vm, t, robj, nil).(*RObject).val.str)
+		fmt.Println(robj.methodLookup("to_s").gofunc(vm, nil, robj, nil).(*RObject).val.str)
 	}
+
+	// Begin empty transaction
+	vm.transactionBegin(env, []Instruction{})
 	return nil
 }
 
-func RKernel_p(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
+func RKernel_p(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	vm.transactionEnd(env)
+
 	for _, obj := range v {
 		robj := obj.(*RObject)
-		fmt.Println(robj.methodLookup("inspect").gofunc(vm, t, robj, nil).(*RObject).val.str)
+		fmt.Println(robj.methodLookup("inspect").gofunc(vm, nil, robj, nil).(*RObject).val.str)
 	}
+
+	// Begin empty transaction
+	vm.transactionBegin(env, []Instruction{})
+
 	return nil
 }

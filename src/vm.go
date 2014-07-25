@@ -15,11 +15,20 @@ type CallFrame struct {
 }
 
 type Transaction struct {
-	instList            []Instruction
-	objectSet           map[*RObject]*RObject
-	localCallFrameStack []*CallFrame
-	inevitable          bool
-	rev                 int64
+	startInst        Instruction
+	instList         []Instruction
+	objectSet        map[*RObject]*RObject
+	transactionStack []*CallFrame
+	env              *ThreadEnv
+	inevitable       bool
+	rev              int64
+}
+
+type ThreadEnv struct {
+	instList      []Instruction
+	threadStack   []*CallFrame
+	transactionPC *Transaction
+	id            int
 }
 
 type GobiesVM struct {
@@ -77,13 +86,54 @@ func (currentCallFrame *CallFrame) variableLookup(var_name string) Object {
 	return nil
 }
 
-func initTransaction(instList []Instruction) *Transaction {
-	t := &Transaction{}
+func (t *Transaction) initTransaction(env *ThreadEnv, instList []Instruction) *Transaction {
 	t.instList = []Instruction{}
 	for _, inst := range instList {
 		t.instList = append(t.instList, inst)
 	}
+	t.transactionStack = copyFrames(env.threadStack)
+	t.objectSet = make(map[*RObject]*RObject)
 	return t
+}
+
+func copyFrames(src []*CallFrame) []*CallFrame {
+	newStack := []*CallFrame{}
+	for _, frame := range src {
+		newFrame := initCallFrame()
+		newFrame.me = frame.me
+		newFrame.parent = frame.parent
+
+		// Copy every object "pointer" in old frame stack
+		for _, obj := range frame.stack {
+			newFrame.stack = append(newFrame.stack, obj)
+		}
+
+		// Copy every object "pointer" in instance variable table
+		for key, obj := range frame.var_table {
+			newFrame.var_table[key] = obj
+		}
+
+		newStack = append(newStack, newFrame)
+	}
+	return newStack
+}
+
+func (obj *RObject) copyObject(src *RObject) {
+	// Copy instance variables
+	ivars := src.ivars
+	for k, v := range ivars {
+		obj.ivars[k] = v
+	}
+}
+
+func addRObjectToSet(obj *RObject, env *ThreadEnv) *RObject {
+	if env == nil { // created during complication
+		return obj
+	}
+	if _, ok := env.transactionPC.objectSet[obj]; !ok {
+		env.transactionPC.objectSet[obj] = obj
+	}
+	return obj
 }
 
 func (VM *GobiesVM) execute() {
@@ -105,15 +155,23 @@ func (VM *GobiesVM) executeThread(instList []Instruction) {
 	currentCallFrame.parent = VM.callFrameStack[len(VM.callFrameStack)-1]
 	currentCallFrame.me = currentCallFrame.parent.me
 
-	// Determine transactions and execute them
-	t := initTransaction(instList)
-	t.localCallFrameStack = append(t.localCallFrameStack, currentCallFrame)
+	env := &ThreadEnv{instList: instList}
+	env.threadStack = append(env.threadStack, currentCallFrame)
+	env.id = test
+	test += 1
+
 	// t.inevitable = true
-	VM.executeTransaction(t)
+	VM.executeBytecodes(nil, env)
 	wg.Done()
 }
 
-func (VM *GobiesVM) executeTransaction(t *Transaction) {
+func (VM *GobiesVM) transactionBegin(env *ThreadEnv, inst []Instruction) *Transaction {
+	t := &Transaction{}
+	t.initTransaction(env, inst)
+	t.rev = atomic.LoadInt64(&VM.rev)
+	env.transactionPC = t
+	t.env = env
+
 	// Initialize environment
 	if t.inevitable {
 		VM.globalLock.Lock()
@@ -121,35 +179,93 @@ func (VM *GobiesVM) executeTransaction(t *Transaction) {
 	} else {
 		VM.globalLock.RLock()
 	}
-	t.rev = atomic.LoadInt64(&VM.rev)
 
-	// Run through a speculative execution
-	// Create clean call frame without pushing back to VM stack
-	VM.executeBytecodes(nil, t)
+	return t
+}
+
+func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
+	t := env.transactionPC
 
 	// Lock the write-set
+	locked := []*RObject{}
+	for orig_obj, new_obj := range t.objectSet {
+		// fmt.Println(orig_obj, new_obj)
+		if orig_obj != new_obj {
+			if orig_obj.writeLock.TryLock() {
+				locked = append(locked, orig_obj)
+			} else { // Attempt to acquire lock failed
+				// Release all locks
+				for _, locked_obj := range locked {
+					locked_obj.writeLock.Unlock()
+				}
+				// Retry
+				goto TRANSACTION_RETRY
+
+			}
+		}
+	}
 
 	// Increment global revision
+	for !atomic.CompareAndSwapInt64(&VM.rev, VM.rev, VM.rev+1) {
+	}
 
 	// Validate the read-set
+	for orig_obj, new_obj := range t.objectSet {
+		if orig_obj == new_obj {
+			if orig_obj.rev > t.rev {
+				// Release write locks
+				for _, locked_obj := range locked {
+					locked_obj.writeLock.Unlock()
+				}
+				// Retry
+				goto TRANSACTION_RETRY
+			}
+		}
+	}
 
-	// Commit and release the locks
+	// Commit then release the locks
+	for _, locked_obj := range locked {
+		src := t.objectSet[locked_obj]
+		locked_obj.copyObject(src)
+	}
+	for _, locked_obj := range locked {
+		locked_obj.writeLock.Unlock()
+	}
+
+	env.threadStack = copyFrames(t.transactionStack)
+
 	if t.inevitable {
 		VM.globalLock.Unlock()
 		atomic.StoreInt32(&VM.has_inevitable, 0)
 	} else {
 		VM.globalLock.RUnlock()
 	}
+
+	env.transactionPC = nil
+	return true
+
+TRANSACTION_RETRY:
+	t.initTransaction(env, t.instList)
+	t.rev = atomic.LoadInt64(&VM.rev)
+	return false
 }
 
-func (VM *GobiesVM) executeBytecodes(instList []Instruction, t *Transaction) {
+func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
+	t := env.transactionPC
+
 	if instList == nil {
-		instList = t.instList
+		instList = env.instList
 	}
-	for _, v := range instList {
-		// currentCallFrame := VM.callFrameStack[len(VM.callFrameStack)-1]
-		currentCallFrame := t.localCallFrameStack[len(t.localCallFrameStack)-1]
-		// printInstructions([]Instruction{v}, false)
+
+	// SPECULATIVE_EXEC:
+	// Speculative execution
+	for i, v := range instList {
+		t = env.transactionPC
+		if t == nil {
+			t = VM.transactionBegin(env, instList[i:])
+		}
+		currentCallFrame := t.transactionStack[len(t.transactionStack)-1]
+
 		switch v.inst_type {
 		case BC_PUTSELF:
 			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.me)
@@ -166,10 +282,16 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, t *Transaction) {
 		case BC_SETLOCAL:
 			top := currentCallFrame.stack[len(currentCallFrame.stack)-1]
 			currentCallFrame.var_table[v.obj.(string)] = top
-			top.(*RObject).name = v.obj.(string)                                               // Change object from anonymous to named
 			currentCallFrame.stack = currentCallFrame.stack[0 : len(currentCallFrame.stack)-1] // Pop object from stack
 		case BC_GETLOCAL:
-			currentCallFrame.stack = append(currentCallFrame.stack, currentCallFrame.variableLookup(v.obj.(string)))
+			obj := currentCallFrame.variableLookup(v.obj.(string)).(*RObject)
+			if _, ok := t.objectSet[obj]; ok {
+				obj = t.objectSet[obj]
+			}
+			currentCallFrame.stack = append(currentCallFrame.stack, obj)
+			if VM.transactionEnd(env) == false {
+
+			}
 		case BC_SETGLOBAL:
 		case BC_GETGLOBAL:
 		case BC_SETSYMBOL:
@@ -182,29 +304,47 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, t *Transaction) {
 		case BC_SETCVAR:
 		case BC_GETCVAR:
 		case BC_SEND:
-			// fmt.Println(currentCallFrame.stack)
 			argLists := currentCallFrame.stack[len(currentCallFrame.stack)-(v.argc+1):] // argc + 1 ensures inclusion of receiver
 			currentCallFrame.stack = currentCallFrame.stack[:len(currentCallFrame.stack)-(v.argc+1)]
 			recv := argLists[0].(*RObject)
 			argLists = argLists[1:]
-			return_val := recv.methodLookup(v.obj.(string)).gofunc(VM, t, recv, argLists)
+			return_val := recv.methodLookup(v.obj.(string)).gofunc(VM, env, recv, argLists)
+			// fmt.Println(env.transactionPC)
+			// Update address since some functions might init new transaction
+			currentCallFrame = env.transactionPC.transactionStack[len(env.transactionPC.transactionStack)-1]
 			if return_val != nil {
 				currentCallFrame.stack = append(currentCallFrame.stack, return_val)
 			}
+			if VM.transactionEnd(env) == false {
+
+			}
 		case BC_JUMP:
 		case BC_INIT_THREAD:
+			// fmt.Println("end:", v)
+			if VM.transactionEnd(env) == false {
+
+			}
 			wg.Add(1)
 			go VM.executeThread(v.obj.(*RObject).methods["def"].def)
 		}
 	}
+	// End transaction if any
+	if env.transactionPC != nil {
+		VM.transactionEnd(env)
+	}
 }
 
-func (VM *GobiesVM) executeBlock(t *Transaction, block *RObject, args []*RObject) {
+func (VM *GobiesVM) executeBlock(env *ThreadEnv, block *RObject, args []*RObject) {
+	if env.transactionPC != nil { // Before
+		VM.transactionEnd(env)
+	}
+	t := VM.transactionBegin(env, block.methods["def"].def)
+
 	// Create clean call frame
 	currentCallFrame := initCallFrame()
-	currentCallFrame.parent = t.localCallFrameStack[len(t.localCallFrameStack)-1]
+	currentCallFrame.parent = t.transactionStack[len(t.transactionStack)-1]
 	currentCallFrame.me = currentCallFrame.parent.me
-	t.localCallFrameStack = append(t.localCallFrameStack, currentCallFrame)
+	t.transactionStack = append(t.transactionStack, currentCallFrame)
 
 	// Fill in arguments to current call frame
 	if block.ivars["params"] != nil {
@@ -216,8 +356,5 @@ func (VM *GobiesVM) executeBlock(t *Transaction, block *RObject, args []*RObject
 	}
 
 	// Execute block definition
-	VM.executeBytecodes(block.methods["def"].def, t)
-
-	// Pop temporary call frame
-	t.localCallFrameStack = t.localCallFrameStack[:len(t.localCallFrameStack)-1]
+	VM.executeBytecodes(block.methods["def"].def, env)
 }

@@ -20,7 +20,9 @@ func initRIO() *RObject {
 
 // IO.readlines(filename)
 // [RString]
-func RIO_readlines(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
+func RIO_readlines(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	vm.transactionEnd(env)
+
 	filename := v[0].(*RObject).val.str
 
 	content, _ := ioutil.ReadFile(filename)
@@ -32,11 +34,14 @@ func RIO_readlines(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Ob
 	lines := strings.SplitAfter(str, "\n")
 	for _, line := range lines {
 		dummy_obj[0] = line
-		rstr := RString_new(vm, t, receiver, dummy_obj)
+		rstr := RString_new(vm, nil, receiver, dummy_obj)
 		items = append(items, rstr)
 	}
 
-	obj := RArray_new(vm, t, receiver, items)
+	obj := RArray_new(vm, nil, receiver, items)
+
+	// Begin empty transaction
+	vm.transactionBegin(env, []Instruction{})
 
 	return obj
 }

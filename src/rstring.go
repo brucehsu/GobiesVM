@@ -23,7 +23,7 @@ func initRString() *RObject {
 
 // String.new(str='')
 // v = [string]
-func RString_new(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
+func RString_new(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	str := ""
 	if len(v) == 1 {
 		str = v[0].(string)
@@ -32,38 +32,43 @@ func RString_new(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Obje
 	obj := &RObject{}
 	obj.class = vm.consts["RString"]
 	obj.val.str = str
-	obj.rev = vm.rev
+	if env == nil {
+		obj.rev = vm.rev
+	} else {
+		obj.rev = env.transactionPC.rev
+	}
 
 	return obj
 }
 
-func RString_concat(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
-	obj := receiver.(*RObject)
+func RString_concat(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	obj := addRObjectToSet(receiver.(*RObject), env)
+	obj = env.transactionPC.objectSet[obj]
 	substr := v[0].(*RObject).val.str
 
-	return RString_new(vm, t, nil, []Object{obj.val.str + substr})
+	return RString_new(vm, env, nil, []Object{obj.val.str + substr})
 }
 
-func RString_to_s(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
-	obj := receiver.(*RObject)
+func RString_to_s(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	obj := addRObjectToSet(receiver.(*RObject), env)
 	return obj
 }
 
-func RString_inspect(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
-	obj := receiver.(*RObject)
+func RString_inspect(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	obj := addRObjectToSet(receiver.(*RObject), env)
 	str := obj.val.str
-	return RString_new(vm, t, nil, []Object{"'" + str + "'"})
+	return RString_new(vm, env, nil, []Object{"'" + str + "'"})
 }
 
-func RString_length(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
-	obj := receiver.(*RObject)
+func RString_length(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	obj := addRObjectToSet(receiver.(*RObject), env)
 	arg := make([]Object, 1, 1)
 	arg[0] = int64(len(obj.val.str))
-	return RFixnum_new(vm, t, receiver, arg)
+	return RFixnum_new(vm, env, receiver, arg)
 }
 
-func RString_split(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object {
-	obj := receiver.(*RObject)
+func RString_split(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	obj := addRObjectToSet(receiver.(*RObject), env)
 	sep := v[0].(*RObject).val.str
 
 	strList := []string{}
@@ -78,7 +83,7 @@ func RString_split(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Ob
 	dummy_arg := []Object{nil}
 	for i, v := range strList {
 		dummy_arg[0] = v
-		arg[i] = RString_new(vm, t, nil, dummy_arg)
+		arg[i] = RString_new(vm, env, nil, dummy_arg)
 	}
-	return RArray_new(vm, t, nil, arg)
+	return RArray_new(vm, env, nil, arg)
 }

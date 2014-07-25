@@ -1,6 +1,6 @@
 package main
 
-import "sync"
+import "github.com/kr/try"
 
 type RObject struct {
 	ivars     map[string]Object
@@ -9,10 +9,10 @@ type RObject struct {
 	name      string
 	val       RValue
 	rev       int64
-	writeLock sync.RWMutex
+	writeLock try.Mutex
 }
 
 type RMethod struct {
-	gofunc func(vm *GobiesVM, t *Transaction, receiver Object, v []Object) Object
+	gofunc func(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object
 	def    []Instruction
 }
