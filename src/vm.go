@@ -145,18 +145,23 @@ func (VM *GobiesVM) execute() {
 
 	// Execute root transaction which is inevitable
 	wg.Add(1)
-	go VM.executeThread(VM.instList)
-
+	go VM.executeThread(VM.instList, nil)
 	wg.Wait()
 }
 
-func (VM *GobiesVM) executeThread(instList []Instruction) {
+func (VM *GobiesVM) executeThread(instList []Instruction, parentScope *ThreadEnv) {
 	// Create clean call frame without pushing back to VM stack
 	currentCallFrame := initCallFrame()
-	currentCallFrame.parent = VM.callFrameStack[len(VM.callFrameStack)-1]
-	currentCallFrame.me = currentCallFrame.parent.me
 
 	env := &ThreadEnv{instList: instList}
+	if parentScope == nil {
+		currentCallFrame.parent = VM.callFrameStack[len(VM.callFrameStack)-1]
+	} else {
+		env.threadStack = copyFrames(parentScope.threadStack)
+		currentCallFrame.parent = env.threadStack[len(env.threadStack)-1]
+		// currentCallFrame.parent = parentScope.threadStack[len(parentScope.threadStack)-1]
+	}
+	currentCallFrame.me = currentCallFrame.parent.me
 	env.threadStack = append(env.threadStack, currentCallFrame)
 	env.id = test
 	test += 1
