@@ -64,6 +64,7 @@ func (VM *GobiesVM) initConsts() {
 	VM.consts["RArray"] = initRArray()
 	VM.consts["RHash"] = initRHash()
 	VM.consts["IO"] = initRIO()
+	VM.consts["Thread"] = initRThread()
 }
 
 func (obj *RObject) methodLookup(method_name string) *RMethod {
