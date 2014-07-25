@@ -319,13 +319,7 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 
 			}
 		case BC_JUMP:
-		case BC_INIT_THREAD:
-			// fmt.Println("end:", v)
-			if VM.transactionEnd(env) == false {
 
-			}
-			wg.Add(1)
-			go VM.executeThread(v.obj.(*RObject).methods["def"].def)
 		}
 	}
 	// End transaction if any

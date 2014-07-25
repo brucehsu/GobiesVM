@@ -45,7 +45,6 @@ func main() {
 	vm := initVM()
 
 	vm.compile(rootAST)
-	vm.instList = findTransactions(vm.instList)
 
 	if printInst {
 		printInstructions(vm.instList, true)
