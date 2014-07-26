@@ -163,8 +163,6 @@ func (VM *GobiesVM) executeThread(instList []Instruction, parentScope *ThreadEnv
 	}
 	currentCallFrame.me = currentCallFrame.parent.me
 	env.threadStack = append(env.threadStack, currentCallFrame)
-	env.id = test
-	test += 1
 
 	// t.inevitable = true
 	VM.executeBytecodes(nil, env)

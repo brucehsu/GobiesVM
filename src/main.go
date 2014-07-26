@@ -74,7 +74,7 @@ func printInstructions(inst []Instruction, blocks bool) {
 		fmt.Println(v)
 		fmt.Print("\t")
 		fmt.Println(v.obj)
-		if (v.inst_type == BC_PUTOBJ || v.inst_type == BC_INITTRANS) && v.obj.(*RObject).name == "RBlock" {
+		if blocks && (v.inst_type == BC_PUTOBJ || v.inst_type == BC_INIT_THREAD) && v.obj.(*RObject).name == "RBlock" {
 			printInstructions(v.obj.(*RObject).methods["def"].def, blocks)
 		}
 	}
