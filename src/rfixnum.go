@@ -109,7 +109,7 @@ func RFixnum_times(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Ob
 		for i := int64(0); i < obj.val.fixnum; i++ {
 			// Prepare block arguments
 			dummy_args[0] = i
-			params[0] = RFixnum_new(vm, env, nil, dummy_args).(*RObject)
+			params[0] = RFixnum_new(vm, nil, nil, dummy_args).(*RObject)
 
 			// Let VM handle all other stuff such as clean call frame
 			vm.executeBlock(env, block, params)
