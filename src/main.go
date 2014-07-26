@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"runtime"
+	"time"
 )
 
 func main() {
@@ -13,8 +14,10 @@ func main() {
 
 	// Flag initialization
 	var printAST, printInst bool
+	var bench int
 	flag.BoolVar(&printAST, "ast", false, "Print abstract syntax tree structure")
 	flag.BoolVar(&printInst, "bytecode", false, "Print comprehensive bytecode instructions")
+	flag.IntVar(&bench, "bench", 0, "Benchmark script execution speed (without parsing stage)")
 
 	flag.Parse()
 
@@ -40,6 +43,19 @@ func main() {
 
 	if printAST {
 		Traverse(rootAST)
+	}
+
+	if bench > 0 {
+		start := time.Now()
+		for i := 0; i < bench; i++ {
+			vm := initVM()
+			vm.compile(rootAST)
+			vm.execute()
+		}
+		total := float64(time.Since(start).Nanoseconds()) / float64(1000000000)
+		fmt.Printf("Total time in %d iterations: %v s\n", bench, total)
+		fmt.Printf("Average Time in %d iterations: %v s\n", bench, total/float64(bench))
+		return
 	}
 
 	vm := initVM()
