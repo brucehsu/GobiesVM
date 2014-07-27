@@ -171,28 +171,33 @@ func (VM *GobiesVM) executeThread(instList []Instruction, parentScope *ThreadEnv
 }
 
 func (VM *GobiesVM) transactionBegin(env *ThreadEnv, inst []Instruction) *Transaction {
+	VM.globalLock.Lock()
 	t := &Transaction{}
 	t.initTransaction(env, inst)
 	t.rev = atomic.LoadInt64(&VM.rev)
 	env.transactionPC = t
 	t.env = env
-
-	// Initialize environment
-	if t.inevitable {
-		VM.globalLock.Lock()
-		atomic.StoreInt32(&VM.has_inevitable, 1)
-	} else {
-		VM.globalLock.RLock()
-	}
+	VM.globalLock.Unlock()
 
 	return t
 }
 
 func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
+	VM.globalLock.Lock()
 	t := env.transactionPC
+	locked := []*RObject{}
+
+	// Validate the read-set
+	for orig_obj, _ := range t.objectSet {
+		if orig_obj.rev > t.rev {
+			// Retry
+			// fmt.Println("pre read-set")
+			VM.globalLock.Unlock()
+			goto TRANSACTION_RETRY
+		}
+	}
 
 	// Lock the write-set
-	locked := []*RObject{}
 	for orig_obj, new_obj := range t.objectSet {
 		// fmt.Println(orig_obj, new_obj)
 		if orig_obj != new_obj {
@@ -204,6 +209,7 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 					locked_obj.writeLock.Unlock()
 				}
 				// Retry
+				VM.globalLock.Unlock()
 				goto TRANSACTION_RETRY
 
 			}
@@ -214,17 +220,16 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 	for !atomic.CompareAndSwapInt64(&VM.rev, VM.rev, VM.rev+1) {
 	}
 
-	// Validate the read-set
-	for orig_obj, new_obj := range t.objectSet {
-		if orig_obj == new_obj {
-			if orig_obj.rev > t.rev {
-				// Release write locks
-				for _, locked_obj := range locked {
-					locked_obj.writeLock.Unlock()
-				}
-				// Retry
-				goto TRANSACTION_RETRY
+	// Re-validate the read-set
+	for orig_obj, _ := range t.objectSet {
+		if orig_obj.rev > t.rev {
+			// Release write locks
+			for _, locked_obj := range locked {
+				locked_obj.writeLock.Unlock()
 			}
+			VM.globalLock.Unlock()
+			// Retry
+			goto TRANSACTION_RETRY
 		}
 	}
 
@@ -232,26 +237,23 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 	for _, locked_obj := range locked {
 		src := t.objectSet[locked_obj]
 		locked_obj.copyObject(src)
+		locked_obj.rev = atomic.LoadInt64(&VM.rev)
 	}
 	for _, locked_obj := range locked {
 		locked_obj.writeLock.Unlock()
 	}
 
 	env.threadStack = copyFrames(t.transactionStack)
-
-	if t.inevitable {
-		VM.globalLock.Unlock()
-		atomic.StoreInt32(&VM.has_inevitable, 0)
-	} else {
-		VM.globalLock.RUnlock()
-	}
-
 	env.transactionPC = nil
+	VM.globalLock.Unlock()
 	return true
 
 TRANSACTION_RETRY:
+	VM.globalLock.Lock()
 	t.initTransaction(env, t.instList)
 	t.rev = atomic.LoadInt64(&VM.rev)
+	VM.globalLock.Unlock()
+	VM.executeBytecodes(t.instList, env)
 	return false
 }
 
@@ -268,6 +270,13 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 		t = env.transactionPC
 		if t == nil {
 			t = VM.transactionBegin(env, instList[i:])
+		}
+		// Validate the read-set
+		for orig_obj, _ := range t.objectSet {
+			if orig_obj.rev > t.rev {
+				// Retry
+				goto TRANSACTION_RETRY
+			}
 		}
 		currentCallFrame := t.transactionStack[len(t.transactionStack)-1]
 
@@ -295,7 +304,7 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 			}
 			currentCallFrame.stack = append(currentCallFrame.stack, obj)
 			if VM.transactionEnd(env) == false {
-
+				return
 			}
 		case BC_SETGLOBAL:
 		case BC_GETGLOBAL:
@@ -325,7 +334,7 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 				currentCallFrame.stack = append(currentCallFrame.stack, return_val)
 			}
 			if VM.transactionEnd(env) == false {
-
+				return
 			}
 		case BC_JUMP:
 
@@ -335,6 +344,15 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 	if env.transactionPC != nil {
 		VM.transactionEnd(env)
 	}
+	return
+
+TRANSACTION_RETRY:
+	// fmt.Println("failed [exec]")
+	VM.globalLock.Lock()
+	t.initTransaction(env, t.instList)
+	t.rev = atomic.LoadInt64(&VM.rev)
+	VM.globalLock.Unlock()
+	VM.executeBytecodes(t.instList, env)
 }
 
 func (VM *GobiesVM) executeBlock(env *ThreadEnv, block *RObject, args []*RObject) {
