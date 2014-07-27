@@ -55,7 +55,11 @@ func RArray_append(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Ob
 		internal_array := obj.ivars["array"].([]*RObject)
 		obj.ivars["array"] = append(internal_array, v[0].(*RObject))
 	} else if obj == env.transactionPC.objectSet[obj] { // Original object
-		new_obj := (RArray_new(vm, env, nil, obj.ivars["array"].([]Object))).(*RObject)
+		new_v := []Object{}
+		for _, item := range obj.ivars["array"].([]*RObject) {
+			new_v = append(new_v, item)
+		}
+		new_obj := (RArray_new(vm, env, nil, new_v)).(*RObject)
 		new_obj.ivars["array"] = append(new_obj.ivars["array"].([]*RObject), v[0].(*RObject))
 		env.transactionPC.objectSet[obj] = new_obj
 	} else {
