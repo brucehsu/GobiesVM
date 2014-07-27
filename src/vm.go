@@ -303,7 +303,11 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 		case BC_GETSYMBOL:
 		case BC_SETCONST:
 		case BC_GETCONST:
-			currentCallFrame.stack = append(currentCallFrame.stack, VM.consts[v.obj.(string)])
+			if v.obj.(string) == "Join" {
+				wg.Wait()
+			} else {
+				currentCallFrame.stack = append(currentCallFrame.stack, VM.consts[v.obj.(string)])
+			}
 		case BC_SETIVAR:
 		case BC_GETIVAR:
 		case BC_SETCVAR:
