@@ -144,8 +144,7 @@ func (VM *GobiesVM) execute() {
 	VM.rev = 0
 
 	// Execute root transaction which is inevitable
-	wg.Add(1)
-	go VM.executeThread(VM.instList, nil)
+	VM.executeThread(VM.instList, nil)
 	wg.Wait()
 }
 
@@ -166,7 +165,9 @@ func (VM *GobiesVM) executeThread(instList []Instruction, parentScope *ThreadEnv
 
 	// t.inevitable = true
 	VM.executeBytecodes(nil, env)
-	wg.Done()
+	if parentScope != nil {
+		wg.Done()
+	}
 }
 
 func (VM *GobiesVM) transactionBegin(env *ThreadEnv, inst []Instruction) *Transaction {
