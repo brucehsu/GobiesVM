@@ -197,7 +197,6 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 
 	// Lock the write-set
 	for orig_obj, new_obj := range t.objectSet {
-		// fmt.Println(orig_obj, new_obj)
 		if orig_obj != new_obj {
 			if orig_obj.writeLock.TryLock() {
 				locked = append(locked, orig_obj)
@@ -326,7 +325,6 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 			recv := argLists[0].(*RObject)
 			argLists = argLists[1:]
 			return_val := recv.methodLookup(v.obj.(string)).gofunc(VM, env, recv, argLists)
-			// fmt.Println(env.transactionPC)
 			// Update address since some functions might init new transaction
 			currentCallFrame = env.transactionPC.transactionStack[len(env.transactionPC.transactionStack)-1]
 			if return_val != nil {
@@ -346,7 +344,6 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 	return
 
 TRANSACTION_RETRY:
-	// fmt.Println("failed [exec]")
 	t.initTransaction(env, t.instList)
 	VM.globalLock.Lock()
 	t.rev = atomic.LoadInt64(&VM.rev)
