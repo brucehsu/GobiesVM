@@ -171,9 +171,10 @@ func (VM *GobiesVM) executeThread(instList []Instruction, parentScope *ThreadEnv
 }
 
 func (VM *GobiesVM) transactionBegin(env *ThreadEnv, inst []Instruction) *Transaction {
-	VM.globalLock.Lock()
 	t := &Transaction{}
 	t.initTransaction(env, inst)
+
+	VM.globalLock.Lock()
 	t.rev = atomic.LoadInt64(&VM.rev)
 	env.transactionPC = t
 	t.env = env
@@ -183,7 +184,6 @@ func (VM *GobiesVM) transactionBegin(env *ThreadEnv, inst []Instruction) *Transa
 }
 
 func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
-	VM.globalLock.Lock()
 	t := env.transactionPC
 	locked := []*RObject{}
 
@@ -191,8 +191,6 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 	for orig_obj, _ := range t.objectSet {
 		if orig_obj.rev > t.rev {
 			// Retry
-			// fmt.Println("pre read-set")
-			VM.globalLock.Unlock()
 			goto TRANSACTION_RETRY
 		}
 	}
@@ -209,13 +207,13 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 					locked_obj.writeLock.Unlock()
 				}
 				// Retry
-				VM.globalLock.Unlock()
 				goto TRANSACTION_RETRY
 
 			}
 		}
 	}
 
+	VM.globalLock.Lock()
 	// Increment global revision
 	for !atomic.CompareAndSwapInt64(&VM.rev, VM.rev, VM.rev+1) {
 	}
@@ -239,18 +237,19 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 		locked_obj.copyObject(src)
 		locked_obj.rev = atomic.LoadInt64(&VM.rev)
 	}
+	VM.globalLock.Unlock()
+
 	for _, locked_obj := range locked {
 		locked_obj.writeLock.Unlock()
 	}
 
 	env.threadStack = copyFrames(t.transactionStack)
 	env.transactionPC = nil
-	VM.globalLock.Unlock()
 	return true
 
 TRANSACTION_RETRY:
-	VM.globalLock.Lock()
 	t.initTransaction(env, t.instList)
+	VM.globalLock.Lock()
 	t.rev = atomic.LoadInt64(&VM.rev)
 	VM.globalLock.Unlock()
 	VM.executeBytecodes(t.instList, env)
@@ -348,8 +347,8 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 
 TRANSACTION_RETRY:
 	// fmt.Println("failed [exec]")
-	VM.globalLock.Lock()
 	t.initTransaction(env, t.instList)
+	VM.globalLock.Lock()
 	t.rev = atomic.LoadInt64(&VM.rev)
 	VM.globalLock.Unlock()
 	VM.executeBytecodes(t.instList, env)
