@@ -86,7 +86,11 @@ func RArray_assign_to_index(vm *GobiesVM, env *ThreadEnv, receiver Object, v []O
 	new_obj := env.transactionPC.objectSet[obj]
 
 	if obj == new_obj {
-		new_obj = (RArray_new(vm, env, nil, obj.ivars["array"].([]Object))).(*RObject)
+		new_v := []Object{}
+		for _, val := range obj.ivars["array"].([]*RObject) {
+			new_v = append(new_v, val)
+		}
+		new_obj = (RArray_new(vm, env, nil, new_v)).(*RObject)
 		env.transactionPC.objectSet[obj] = new_obj
 	}
 
@@ -116,7 +120,7 @@ func RArray_inspect(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) O
 	internal_array := obj.ivars["array"].([]*RObject)
 	strList := []string{}
 	for _, item := range internal_array {
-		strList = append(strList, item.methodLookup("to_s").gofunc(vm, env, item, v).(*RObject).val.str)
+		strList = append(strList, item.methodLookup("inspect").gofunc(vm, env, item, v).(*RObject).val.str)
 	}
 
 	if len(strList) == 0 {
