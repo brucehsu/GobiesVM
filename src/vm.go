@@ -92,43 +92,81 @@ func (t *Transaction) initTransaction(env *ThreadEnv, instList []Instruction) *T
 	for _, inst := range instList {
 		t.instList = append(t.instList, inst)
 	}
-	t.transactionStack = copyFrames(env.threadStack)
+	t.transactionStack = copyFrames(env.threadStack, false)
 	t.objectSet = make(map[*RObject]*RObject)
 	return t
 }
 
-func copyFrames(src []*CallFrame) []*CallFrame {
-	newStack := make([]*CallFrame, len(src), len(src))
-	for i := 0; i < len(src)-1; i++ {
-		newStack[i] = src[i]
+func copyFrames(src []*CallFrame, initThread bool) []*CallFrame {
+	var newStack []*CallFrame
+	if initThread {
+		newFrame := initCallFrame()
+		newFrame.parent = nil
+		newFrame.stack = make([]Object, 0, 0)
+		// fmt.Println(test, "=>", src)
+		for _, frame := range src {
+			newFrame.me = frame.me
+			// Copy every object "pointer" in instance variable table
+			for key, obj := range frame.var_table {
+				if obj.(*RObject).blockVar {
+					newFrame.var_table[key] = obj.(*RObject).copyObject()
+				} else {
+					newFrame.var_table[key] = obj
+				}
+			}
+		}
+		newStack = []*CallFrame{newFrame}
+	} else {
+		newStack = make([]*CallFrame, len(src), len(src))
+		for i := 0; i < len(src)-1; i++ {
+			newStack[i] = src[i]
+		}
+
+		frame := src[len(src)-1]
+		newFrame := initCallFrame()
+		newFrame.me = frame.me
+		newFrame.parent = frame.parent
+		newFrame.stack = make([]Object, len(frame.stack), len(frame.stack))
+
+		// Copy every object "pointer" in old frame stack
+		for j, obj := range frame.stack {
+			newFrame.stack[j] = obj
+		}
+
+		// Copy every object "pointer" in instance variable table
+		for key, obj := range frame.var_table {
+			newFrame.var_table[key] = obj
+		}
+
+		newStack[len(src)-1] = newFrame
+
 	}
 
-	frame := src[len(src)-1]
-	newFrame := initCallFrame()
-	newFrame.me = frame.me
-	newFrame.parent = frame.parent
-	newFrame.stack = make([]Object, len(frame.stack), len(frame.stack))
-
-	// Copy every object "pointer" in old frame stack
-	for j, obj := range frame.stack {
-		newFrame.stack[j] = obj
-	}
-
-	// Copy every object "pointer" in instance variable table
-	for key, obj := range frame.var_table {
-		newFrame.var_table[key] = obj
-	}
-
-	newStack[len(src)-1] = newFrame
 	return newStack
 }
 
-func (obj *RObject) copyObject(src *RObject) {
+func (obj *RObject) copyObjectFrom(src *RObject) {
 	// Copy instance variables
 	ivars := src.ivars
 	for k, v := range ivars {
 		obj.ivars[k] = v
 	}
+}
+
+func (obj *RObject) copyObject() *RObject {
+	new_obj := &RObject{}
+	new_obj.class = obj.class
+	new_obj.rev = obj.rev
+	new_obj.val = obj.val
+	new_obj.blockVar = obj.blockVar
+	new_obj.ivars = make(map[string]Object)
+	new_obj.methods = make(map[string]*RMethod)
+
+	ivars := obj.ivars
+	for k, v := range ivars {
+		new_obj.ivars[k] = v
+	}
+	return new_obj
 }
 
 func addRObjectToSet(obj *RObject, env *ThreadEnv) *RObject {
@@ -153,17 +191,19 @@ func (VM *GobiesVM) execute() {
 }
 
 func (VM *GobiesVM) executeThread(instList []Instruction, parentScope *ThreadEnv) {
+	VM.globalLock.Lock()
 	// Create clean call frame without pushing back to VM stack
 	currentCallFrame := initCallFrame()
-
 	env := &ThreadEnv{instList: instList}
 	if parentScope == nil {
 		currentCallFrame.parent = VM.callFrameStack[len(VM.callFrameStack)-1]
 	} else {
-		env.threadStack = copyFrames(parentScope.threadStack)
+		env.threadStack = copyFrames(parentScope.threadStack, true)
 		currentCallFrame.parent = env.threadStack[len(env.threadStack)-1]
 		// currentCallFrame.parent = parentScope.threadStack[len(parentScope.threadStack)-1]
 	}
+	VM.globalLock.Unlock()
+
 	currentCallFrame.me = currentCallFrame.parent.me
 	env.threadStack = append(env.threadStack, currentCallFrame)
 
@@ -237,7 +277,7 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 	// Commit then release the locks
 	for _, locked_obj := range locked {
 		src := t.objectSet[locked_obj]
-		locked_obj.copyObject(src)
+		locked_obj.copyObjectFrom(src)
 		locked_obj.rev = atomic.LoadInt64(&VM.rev)
 	}
 	VM.globalLock.Unlock()
@@ -246,7 +286,7 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 		locked_obj.writeLock.Unlock()
 	}
 
-	env.threadStack = copyFrames(t.transactionStack)
+	env.threadStack = copyFrames(t.transactionStack, false)
 	env.transactionPC = nil
 	return true
 
@@ -359,25 +399,28 @@ func (VM *GobiesVM) executeBlock(env *ThreadEnv, block *RObject, args []*RObject
 	if env.transactionPC != nil { // Before
 		VM.transactionEnd(env)
 	}
-	t := VM.transactionBegin(env, block.methods["def"].def)
 
 	// Create clean call frame
 	currentCallFrame := initCallFrame()
-	currentCallFrame.parent = t.transactionStack[len(t.transactionStack)-1]
+	currentCallFrame.parent = env.threadStack[len(env.threadStack)-1]
 	currentCallFrame.me = currentCallFrame.parent.me
-	t.transactionStack = append(t.transactionStack, currentCallFrame)
+	env.threadStack = append(env.threadStack, currentCallFrame)
 
 	// Fill in arguments to current call frame
 	if block.ivars["params"] != nil {
 		params := block.ivars["params"].(*RObject).ivars["array"].([]*RObject)
 		for i, v := range params {
 			var_name := v.val.str
-			currentCallFrame.var_table[var_name] = args[i]
+			currentCallFrame.var_table[var_name] = args[i].copyObject()
+			currentCallFrame.var_table[var_name].(*RObject).blockVar = true
 		}
 	}
 
+	VM.transactionBegin(env, block.methods["def"].def)
+
 	// Execute block definition
 	VM.executeBytecodes(block.methods["def"].def, env)
+	env.threadStack = env.threadStack[0 : len(env.threadStack)-1]
 
 	VM.transactionBegin(env, []Instruction{})
 }

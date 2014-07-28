@@ -14,8 +14,9 @@ func initRThread() *RObject {
 }
 
 func RThread_new(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	vm.transactionEnd(env)
 	wg.Add(1)
-	go vm.executeThread(v[0].(*RObject).methods["def"].def, env)
-
+	go vm.executeThread(v[0].(*RObject).methods["def"].def, &ThreadEnv{threadStack: env.threadStack})
+	vm.transactionBegin(env, []Instruction{})
 	return nil
 }

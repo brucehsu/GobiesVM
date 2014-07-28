@@ -10,6 +10,7 @@ type RObject struct {
 	val       RValue
 	rev       int64
 	writeLock try.Mutex
+	blockVar  bool
 }
 
 type RMethod struct {
