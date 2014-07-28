@@ -98,24 +98,28 @@ func (t *Transaction) initTransaction(env *ThreadEnv, instList []Instruction) *T
 }
 
 func copyFrames(src []*CallFrame) []*CallFrame {
-	newStack := []*CallFrame{}
-	for _, frame := range src {
-		newFrame := initCallFrame()
-		newFrame.me = frame.me
-		newFrame.parent = frame.parent
-
-		// Copy every object "pointer" in old frame stack
-		for _, obj := range frame.stack {
-			newFrame.stack = append(newFrame.stack, obj)
-		}
-
-		// Copy every object "pointer" in instance variable table
-		for key, obj := range frame.var_table {
-			newFrame.var_table[key] = obj
-		}
-
-		newStack = append(newStack, newFrame)
+	newStack := make([]*CallFrame, len(src), len(src))
+	for i := 0; i < len(src)-1; i++ {
+		newStack[i] = src[i]
 	}
+
+	frame := src[len(src)-1]
+	newFrame := initCallFrame()
+	newFrame.me = frame.me
+	newFrame.parent = frame.parent
+	newFrame.stack = make([]Object, len(frame.stack), len(frame.stack))
+
+	// Copy every object "pointer" in old frame stack
+	for j, obj := range frame.stack {
+		newFrame.stack[j] = obj
+	}
+
+	// Copy every object "pointer" in instance variable table
+	for key, obj := range frame.var_table {
+		newFrame.var_table[key] = obj
+	}
+
+	newStack[len(src)-1] = newFrame
 	return newStack
 }
 
