@@ -88,6 +88,16 @@ func (currentCallFrame *CallFrame) variableLookup(var_name string) Object {
 	return nil
 }
 
+func (currentCallFrame *CallFrame) variableTableLookup(var_name string) map[string]Object {
+	if _, ok := currentCallFrame.var_table[var_name]; ok {
+		return currentCallFrame.var_table
+	}
+	if currentCallFrame.parent != nil {
+		return currentCallFrame.parent.variableTableLookup(var_name)
+	}
+	return nil
+}
+
 func (t *Transaction) initTransaction(env *ThreadEnv, instList []Instruction) *Transaction {
 	t.instList = []Instruction{}
 	for _, inst := range instList {
@@ -338,7 +348,12 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 		case BC_PUTFALSE:
 		case BC_SETLOCAL:
 			top := currentCallFrame.stack[len(currentCallFrame.stack)-1]
-			currentCallFrame.var_table[v.obj.(string)] = top
+			table := currentCallFrame.variableTableLookup(v.obj.(string))
+			if table != nil {
+				table[v.obj.(string)] = top
+			} else {
+				currentCallFrame.var_table[v.obj.(string)] = top
+			}
 			currentCallFrame.stack = currentCallFrame.stack[0 : len(currentCallFrame.stack)-1] // Pop object from stack
 		case BC_GETLOCAL:
 			obj := currentCallFrame.variableLookup(v.obj.(string)).(*RObject)
