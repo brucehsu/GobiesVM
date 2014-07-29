@@ -17,6 +17,7 @@ func initRFixnum() *RObject {
 	obj.methods["*"] = &RMethod{gofunc: RFixnum_mul}
 	obj.methods["/"] = &RMethod{gofunc: RFixnum_div}
 	obj.methods["to_s"] = &RMethod{gofunc: RFixnum_to_s}
+	obj.methods["to_f"] = &RMethod{gofunc: RFixnum_to_f}
 	obj.methods["inspect"] = &RMethod{gofunc: RFixnum_to_s}
 	obj.methods["times"] = &RMethod{gofunc: RFixnum_times}
 
@@ -92,6 +93,11 @@ func RFixnum_div(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 func RFixnum_to_s(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
 	return RString_new(vm, env, nil, []Object{strconv.FormatInt(obj.val.fixnum, 10)})
+}
+
+func RFixnum_to_f(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	obj := addRObjectToSet(receiver.(*RObject), env)
+	return RFlonum_new(vm, env, nil, []Object{float64(obj.val.fixnum)})
 }
 
 // RFixnum.times(&block)

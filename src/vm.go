@@ -61,6 +61,7 @@ func initCallFrame() *CallFrame {
 func (VM *GobiesVM) initConsts() {
 	VM.consts["RString"] = initRString()
 	VM.consts["RFixnum"] = initRFixnum()
+	VM.consts["RFlonum"] = initRFlonum()
 	VM.consts["RArray"] = initRArray()
 	VM.consts["RHash"] = initRHash()
 	VM.consts["IO"] = initRIO()
