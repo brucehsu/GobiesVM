@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+)
 
 func initRKernel() *RObject {
 	rkernel := &RObject{}
@@ -18,6 +21,7 @@ func initRKernel() *RObject {
 func (obj *RObject) initRKernelMethods() {
 	obj.methods["puts"] = &RMethod{gofunc: RKernel_puts}
 	obj.methods["p"] = &RMethod{gofunc: RKernel_p}
+	obj.methods["rand"] = &RMethod{gofunc: RKernel_rand}
 }
 
 // Irreversible IO functions
@@ -46,4 +50,8 @@ func RKernel_p(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object
 	vm.transactionBegin(env, []Instruction{})
 
 	return nil
+}
+
+func RKernel_rand(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	return RFixnum_new(vm, env, nil, []Object{rand.Int63n(v[0].(*RObject).val.fixnum)})
 }
