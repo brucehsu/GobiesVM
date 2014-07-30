@@ -16,6 +16,7 @@ func initRFixnum() *RObject {
 	obj.methods["-"] = &RMethod{gofunc: RFixnum_sub}
 	obj.methods["*"] = &RMethod{gofunc: RFixnum_mul}
 	obj.methods["/"] = &RMethod{gofunc: RFixnum_div}
+	obj.methods["atomic_add"] = &RMethod{gofunc: RFixnum_atomic_add}
 	obj.methods["to_s"] = &RMethod{gofunc: RFixnum_to_s}
 	obj.methods["to_f"] = &RMethod{gofunc: RFixnum_to_f}
 	obj.methods["inspect"] = &RMethod{gofunc: RFixnum_to_s}
@@ -62,6 +63,19 @@ func RFixnum_add(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 	obj := addRObjectToSet(receiver.(*RObject), env)
 	dummy_args := []Object{obj.val.fixnum + v[0].(*RObject).val.fixnum}
 	obj = RFixnum_new(vm, env, nil, dummy_args).(*RObject)
+
+	return obj
+}
+
+func RFixnum_atomic_add(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	obj := addRObjectToSet(receiver.(*RObject), env)
+	new_obj := env.transactionPC.objectSet[obj]
+
+	if obj == new_obj {
+		new_obj = RFixnum_new(vm, env, nil, []Object{obj.val.fixnum}).(*RObject)
+		env.transactionPC.objectSet[obj] = new_obj
+	}
+	new_obj.val.fixnum += v[0].(*RObject).val.fixnum
 
 	return obj
 }
