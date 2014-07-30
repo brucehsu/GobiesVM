@@ -13,6 +13,7 @@ func initRArray() *RObject {
 	obj.methods["new"] = &RMethod{gofunc: RArray_new}
 	obj.methods["<<"] = &RMethod{gofunc: RArray_append}
 	obj.methods["[]"] = &RMethod{gofunc: RArray_at}
+	obj.methods["at"] = &RMethod{gofunc: RArray_at}
 	obj.methods["[]="] = &RMethod{gofunc: RArray_assign_to_index}
 	obj.methods["to_s"] = &RMethod{gofunc: RArray_to_s}
 	obj.methods["inspect"] = &RMethod{gofunc: RArray_inspect}
@@ -78,28 +79,26 @@ func RArray_at(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object
 
 	idx := v[0].(*RObject).val.fixnum
 
-	return internal_array[idx]
+	orig_val := internal_array[idx]
+
+	if val, ok := env.transactionPC.objectSet[orig_val]; ok {
+		return val
+	}
+
+	return orig_val
 }
 
 func RArray_assign_to_index(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
 	new_obj := env.transactionPC.objectSet[obj]
 
-	if obj == new_obj {
-		new_v := []Object{}
-		for _, val := range obj.ivars["array"].([]*RObject) {
-			new_v = append(new_v, val)
-		}
-		new_obj = (RArray_new(vm, env, nil, new_v)).(*RObject)
-		env.transactionPC.objectSet[obj] = new_obj
-	}
-
 	internal_array := new_obj.ivars["array"].([]*RObject)
 
 	idx := v[0].(*RObject).val.fixnum
 	val := v[1].(*RObject)
-
-	internal_array[idx] = val
+	orig_val := internal_array[idx]
+	addRObjectToSet(orig_val, env)
+	env.transactionPC.objectSet[orig_val] = val
 
 	return val
 }
