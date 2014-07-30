@@ -276,6 +276,7 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 	// Increment global revision
 	for !atomic.CompareAndSwapInt64(&VM.rev, VM.rev, VM.rev+1) {
 	}
+	rev = atomic.LoadInt64(&VM.rev)
 
 	// Re-validate the read-set
 	for orig_obj, _ := range t.objectSet {
@@ -294,16 +295,15 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 	for _, locked_obj := range locked {
 		src := t.objectSet[locked_obj]
 		locked_obj.copyObjectFrom(src)
-		locked_obj.rev = atomic.LoadInt64(&VM.rev)
-	}
-	VM.globalLock.Unlock()
-
-	for _, locked_obj := range locked {
+		locked_obj.rev = rev
 		locked_obj.writeLock.Unlock()
 	}
 
+	VM.globalLock.Unlock()
+
 	env.threadStack = copyFrames(t.transactionStack, false)
 	env.transactionPC = nil
+
 	return true
 
 TRANSACTION_RETRY:
@@ -331,7 +331,7 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 		}
 		// Validate the read-set
 		for orig_obj, _ := range t.objectSet {
-			if orig_obj.rev > t.rev {
+			if orig_obj.rev > t.rev || orig_obj.writeLock.TryLock() {
 				// Retry
 				goto TRANSACTION_RETRY
 			}
