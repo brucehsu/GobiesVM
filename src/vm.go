@@ -246,6 +246,7 @@ func (VM *GobiesVM) transactionBegin(env *ThreadEnv, inst []Instruction) *Transa
 func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 	t := env.transactionPC
 	locked := []*RObject{}
+	rev := t.rev
 
 	// Validate the read-set
 	for orig_obj, _ := range t.objectSet {
