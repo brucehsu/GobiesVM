@@ -157,11 +157,16 @@ func copyFrames(src []*CallFrame, initThread bool) []*CallFrame {
 }
 
 func (obj *RObject) copyObjectFrom(src *RObject) {
+	obj.class = src.class
+	obj.rev = src.rev
+	obj.val = src.val
+	obj.blockVar = src.blockVar
 	// Copy instance variables
 	ivars := src.ivars
 	for k, v := range ivars {
 		obj.ivars[k] = v
 	}
+	obj.val = src.val
 }
 
 func (obj *RObject) copyObject() *RObject {
