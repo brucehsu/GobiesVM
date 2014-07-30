@@ -356,14 +356,13 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 			}
 			currentCallFrame.stack = currentCallFrame.stack[0 : len(currentCallFrame.stack)-1] // Pop object from stack
 		case BC_GETLOCAL:
-			obj := currentCallFrame.variableLookup(v.obj.(string)).(*RObject)
-			if _, ok := t.objectSet[obj]; ok {
-				obj = t.objectSet[obj]
-			}
-			currentCallFrame.stack = append(currentCallFrame.stack, obj)
 			if VM.transactionEnd(env) == false {
 				return
 			}
+			currentCallFrame = env.threadStack[len(env.threadStack)-1]
+			obj := currentCallFrame.variableLookup(v.obj.(string)).(*RObject)
+			currentCallFrame.stack = append(currentCallFrame.stack, obj)
+
 		case BC_SETGLOBAL:
 		case BC_GETGLOBAL:
 		case BC_SETSYMBOL:
