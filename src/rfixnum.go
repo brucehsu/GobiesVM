@@ -62,6 +62,13 @@ func RFixnum_assign(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) O
 func RFixnum_add(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
 	dummy_args := []Object{obj.val.fixnum + v[0].(*RObject).val.fixnum}
+
+	// Convert to RFlonum if the second operand is RFlonum
+	if v[0].(*RObject).class.name == "RFlonum" {
+		dummy_args[0] = float64(obj.val.fixnum) + (v[0].(*RObject).val.float)
+		return RFlonum_new(vm, env, nil, dummy_args).(*RObject)
+	}
+
 	obj = RFixnum_new(vm, env, nil, dummy_args).(*RObject)
 
 	return obj
@@ -83,6 +90,13 @@ func RFixnum_atomic_add(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Objec
 func RFixnum_sub(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
 	dummy_args := []Object{obj.val.fixnum - v[0].(*RObject).val.fixnum}
+
+	// Convert to RFlonum if the second operand is RFlonum
+	if v[0].(*RObject).class.name == "RFlonum" {
+		dummy_args[0] = float64(obj.val.fixnum) - (v[0].(*RObject).val.float)
+		return RFlonum_new(vm, env, nil, dummy_args).(*RObject)
+	}
+
 	obj = RFixnum_new(vm, env, nil, dummy_args).(*RObject)
 
 	return obj
@@ -91,6 +105,13 @@ func RFixnum_sub(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 func RFixnum_mul(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
 	dummy_args := []Object{obj.val.fixnum * v[0].(*RObject).val.fixnum}
+
+	// Convert to RFlonum if the second operand is RFlonum
+	if v[0].(*RObject).class.name == "RFlonum" {
+		dummy_args[0] = float64(obj.val.fixnum) * (v[0].(*RObject).val.float)
+		return RFlonum_new(vm, env, nil, dummy_args).(*RObject)
+	}
+
 	obj = RFixnum_new(vm, env, nil, dummy_args).(*RObject)
 
 	return obj
@@ -98,8 +119,14 @@ func RFixnum_mul(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 
 func RFixnum_div(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
-	dummy_args := []Object{obj.val.fixnum / v[0].(*RObject).val.fixnum}
-	obj = RFixnum_new(vm, env, nil, dummy_args).(*RObject)
+
+	// Abandon dummy_args pre-declaration cause it may trigger divide by zero
+	// Convert to RFlonum if the second operand is RFlonum
+	if v[0].(*RObject).class.name == "RFlonum" {
+		return RFlonum_new(vm, env, nil, []Object{float64(obj.val.fixnum) / (v[0].(*RObject).val.float)}).(*RObject)
+	}
+
+	obj = RFixnum_new(vm, env, nil, []Object{obj.val.fixnum / v[0].(*RObject).val.fixnum}).(*RObject)
 
 	return obj
 }
