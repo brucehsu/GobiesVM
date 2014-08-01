@@ -9,6 +9,17 @@ import (
 	"time"
 )
 
+const (
+	LOG_COMMIT_SUCCESS int = iota
+	LOG_COMMIT_VALID_READ
+	LOG_COMMIT_LOCK_WRITE
+	LOG_COMMIT_REVALID_READ
+	LOG_EXEC_VALID_READ
+)
+
+var log_transaction bool
+var log_status [5]int32
+
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
@@ -17,6 +28,7 @@ func main() {
 	var bench int
 	flag.BoolVar(&printAST, "ast", false, "Print abstract syntax tree structure")
 	flag.BoolVar(&printInst, "bytecode", false, "Print comprehensive bytecode instructions")
+	flag.BoolVar(&log_transaction, "log", false, "Log transaction status")
 	flag.IntVar(&bench, "bench", 0, "Benchmark script execution speed (without parsing stage)")
 
 	flag.Parse()
@@ -52,6 +64,11 @@ func main() {
 			vm.compile(rootAST)
 			vm.execute()
 		}
+
+		if log_transaction {
+			printTransactionLog()
+		}
+
 		total := float64(time.Since(start).Nanoseconds()) / float64(1000000000)
 		fmt.Printf("Total time in %d iterations: %v s\n", bench, total)
 		fmt.Printf("Average Time in %d iterations: %v s\n", bench, total/float64(bench))
@@ -67,6 +84,10 @@ func main() {
 	}
 
 	vm.execute()
+
+	if log_transaction {
+		printTransactionLog()
+	}
 }
 
 func printInstructions(inst []Instruction, blocks bool) {
@@ -78,4 +99,23 @@ func printInstructions(inst []Instruction, blocks bool) {
 			printInstructions(v.obj.(*RObject).methods["def"].def, blocks)
 		}
 	}
+}
+
+func printTransactionLog() {
+	total := int64(0)
+	fmt.Println("\nTransaction Logging Status")
+	fmt.Println("Success:", log_status[LOG_COMMIT_SUCCESS])
+	fmt.Println("Fail:")
+	fmt.Println("\tCommit")
+	fmt.Println("\t\tREAD:", log_status[LOG_COMMIT_VALID_READ])
+	fmt.Println("\t\tREAD (revalid):", log_status[LOG_COMMIT_REVALID_READ])
+	fmt.Println("\t\tWRITE:", log_status[LOG_COMMIT_LOCK_WRITE])
+	fmt.Println("\tExecution")
+	fmt.Println("\t\tREAD:", log_status[LOG_EXEC_VALID_READ])
+
+	for _, log_cnt := range log_status {
+		total += int64(log_cnt)
+	}
+
+	fmt.Println("Total:", total)
 }

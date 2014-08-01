@@ -252,6 +252,9 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 	for orig_obj, _ := range t.objectSet {
 		if orig_obj.rev > t.rev {
 			// Retry
+			if log_transaction {
+				atomic.AddInt32(&log_status[LOG_COMMIT_VALID_READ], 1)
+			}
 			goto TRANSACTION_RETRY
 		}
 	}
@@ -267,6 +270,9 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 					locked_obj.writeLock.Unlock()
 				}
 				// Retry
+				if log_transaction {
+					atomic.AddInt32(&log_status[LOG_COMMIT_LOCK_WRITE], 1)
+				}
 				goto TRANSACTION_RETRY
 
 			}
@@ -288,6 +294,9 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 			}
 			VM.globalLock.Unlock()
 			// Retry
+			if log_transaction {
+				atomic.AddInt32(&log_status[LOG_COMMIT_REVALID_READ], 1)
+			}
 			goto TRANSACTION_RETRY
 		}
 	}
@@ -304,6 +313,10 @@ func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 
 	env.threadStack = copyFrames(t.transactionStack, false)
 	env.transactionPC = nil
+
+	if log_transaction {
+		atomic.AddInt32(&log_status[LOG_COMMIT_SUCCESS], 1)
+	}
 
 	return true
 
@@ -334,6 +347,9 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 		for orig_obj, _ := range t.objectSet {
 			if orig_obj.rev > t.rev || orig_obj.writeLock.TryLock() {
 				// Retry
+				if log_transaction {
+					atomic.AddInt32(&log_status[LOG_EXEC_VALID_READ], 1)
+				}
 				goto TRANSACTION_RETRY
 			}
 		}
