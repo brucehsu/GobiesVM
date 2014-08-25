@@ -13,3 +13,14 @@ make
 ```
 
 The executable will be placed inside ``bin/``.
+
+# Usage
+```
+gobiesvm [OPTIONS] RBFILE
+
+Options:
+  -ast: Print abstract syntax tree structure
+  -bench=[0]: Benchmark script execution speed (without parsing stage)
+  -bytecode: Print comprehensive bytecode instructions
+  -log: Log transaction status
+```
