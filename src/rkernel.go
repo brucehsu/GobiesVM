@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+)
 
 func initRKernel() *RObject {
 	rkernel := &RObject{}
@@ -18,20 +21,37 @@ func initRKernel() *RObject {
 func (obj *RObject) initRKernelMethods() {
 	obj.methods["puts"] = &RMethod{gofunc: RKernel_puts}
 	obj.methods["p"] = &RMethod{gofunc: RKernel_p}
+	obj.methods["rand"] = &RMethod{gofunc: RKernel_rand}
 }
 
-func RKernel_puts(vm *GobiesVM, receiver Object, v []Object) Object {
+// Irreversible IO functions
+func RKernel_puts(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	vm.transactionEnd(env)
+
 	for _, obj := range v {
 		robj := obj.(*RObject)
-		fmt.Println(robj.methodLookup("to_s").gofunc(vm, robj, nil).(*RObject).val.str)
+		fmt.Println(robj.methodLookup("to_s").gofunc(vm, nil, robj, nil).(*RObject).val.str)
 	}
+
+	// Begin empty transaction
+	vm.transactionBegin(env, []Instruction{})
 	return nil
 }
 
-func RKernel_p(vm *GobiesVM, receiver Object, v []Object) Object {
+func RKernel_p(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	vm.transactionEnd(env)
+
 	for _, obj := range v {
 		robj := obj.(*RObject)
-		fmt.Println(robj.methodLookup("inspect").gofunc(vm, robj, nil).(*RObject).val.str)
+		fmt.Println(robj.methodLookup("inspect").gofunc(vm, nil, robj, nil).(*RObject).val.str)
 	}
+
+	// Begin empty transaction
+	vm.transactionBegin(env, []Instruction{})
+
 	return nil
+}
+
+func RKernel_rand(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	return RFixnum_new(vm, env, nil, []Object{rand.Int63n(v[0].(*RObject).val.fixnum)})
 }

@@ -6,6 +6,8 @@ const (
 	BC_PUTSELF Bytecode = iota
 	BC_PUTNIL
 	BC_PUTOBJ
+	BC_PUTFIXNUM
+	BC_PUTSTRING
 	BC_PUTTRUE
 	BC_PUTFALSE
 	BC_SETLOCAL
@@ -22,6 +24,7 @@ const (
 	BC_GETCVAR
 	BC_SEND
 	BC_JUMP
+	BC_INIT_THREAD
 )
 
 type Instruction struct {
@@ -43,6 +46,7 @@ func (VM *GobiesVM) compile(node *AST) {
 	for node != nil {
 		switch node.Type {
 		case NODE_ROOT:
+			// VM.AddInstruction(BC_INITTRANS, nil) Dont need init transaction since root should be one inevitable
 			head := node.args[0]
 			VM.compile(head)
 		case NODE_LIST:
@@ -58,12 +62,12 @@ func (VM *GobiesVM) compile(node *AST) {
 
 			if params != nil { // Block has params
 				argc := params.length
-				param_array := RArray_new(VM, nil, nil)
+				param_array := RArray_new(VM, nil, nil, nil)
 				for i := 0; i < argc; i++ {
 					dummy_arg := []Object{params.args[0].value.str}
-					param := RString_new(VM, nil, dummy_arg)
+					param := RString_new(VM, nil, nil, dummy_arg)
 					dummy_arg[0] = param
-					RArray_append(VM, param_array, dummy_arg)
+					RArray_append(VM, nil, param_array, dummy_arg)
 					params = params.next
 				}
 				block.ivars["params"] = param_array
@@ -77,20 +81,20 @@ func (VM *GobiesVM) compile(node *AST) {
 				VM.AddInstruction(BC_SETSYMBOL, astval.value.str)
 			} else { // NUMBER
 				val := []Object{astval.value.numeric}
-				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, val))
+				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, nil, val))
 			}
 		case NODE_ASTVAL:
 			if len(node.value.str) != 0 {
 				val := []Object{node.value.str}
-				VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, val))
+				VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, nil, val))
 			} else {
 				val := []Object{node.value.numeric}
-				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, val))
+				VM.AddInstruction(BC_PUTOBJ, RFixnum_new(VM, nil, nil, val))
 			}
 		case NODE_STRING:
 			astval := node.args[0]
 			val := []Object{astval.value.str}
-			VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, val))
+			VM.AddInstruction(BC_PUTOBJ, RString_new(VM, nil, nil, val))
 		case NODE_ASSIGN:
 			// Set local variable
 			astval := node.args[0]
@@ -229,4 +233,38 @@ func (VM *GobiesVM) compile(node *AST) {
 		}
 		node = node.next
 	}
+}
+
+func findTransactions(instList []Instruction) []Instruction {
+FIND_TRANSACTION_BEGIN:
+	for i, node := range instList {
+		if node.inst_type == BC_GETCONST && node.obj.(string) == "Thread" {
+			// Assume Thread always comes with .new(&block)
+			block := instList[i+1].obj.(*RObject)
+			node.inst_type = BC_INIT_THREAD
+			node.obj = block
+			instList[i] = node
+
+			newInstList := make([]Instruction, 0, len(instList))
+			for j := 0; j <= i; j++ {
+				newInstList = append(newInstList, instList[j])
+			}
+			for j := i + 3; j < len(instList); j++ {
+				newInstList = append(newInstList, instList[j])
+			}
+			instList = newInstList
+			goto FIND_TRANSACTION_BEGIN
+		} else {
+			if node.inst_type == BC_PUTOBJ {
+				switch node.obj.(type) {
+				case *RObject:
+					obj := node.obj.(*RObject)
+					if obj.name == "RBlock" {
+						obj.methods["def"].def = findTransactions(obj.methods["def"].def)
+					}
+				}
+			}
+		}
+	}
+	return instList
 }
