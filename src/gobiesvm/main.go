@@ -95,6 +95,8 @@ func printInstructions(inst []Instruction, blocks bool) {
 		"BC_PUTSELF",
 		"BC_PUTNIL",
 		"BC_PUTOBJ",
+		"BC_PUTFIXNUM",
+		"BC_PUTSTRING",
 		"BC_PUTTRUE",
 		"BC_PUTFALSE",
 		"BC_SETLOCAL",
@@ -111,6 +113,7 @@ func printInstructions(inst []Instruction, blocks bool) {
 		"BC_GETCVAR",
 		"BC_SEND",
 		"BC_JUMP",
+		"BC_INIT_THREAD",
 	}
 	for _, v := range inst {
 		fmt.Println(BytecodeInString[v.inst_type], v)
