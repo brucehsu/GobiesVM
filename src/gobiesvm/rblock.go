@@ -8,7 +8,8 @@ func newRBlock(inst []Instruction) *RObject {
 	obj.methods = make(map[string]*RMethod)
 
 	var new_inst []Instruction
-	for _, v := range inst {
+	for i, v := range inst {
+		v.inst_seq = i
 		new_inst = append(new_inst, v)
 	}
 
