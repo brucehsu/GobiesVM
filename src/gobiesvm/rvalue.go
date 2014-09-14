@@ -1,7 +1,8 @@
 package main
 
 type RValue struct {
-	str    string
-	fixnum int64
-	float  float64
+	str     string
+	fixnum  int64
+	float   float64
+	boolean bool
 }

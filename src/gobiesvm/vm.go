@@ -64,6 +64,7 @@ func (VM *GobiesVM) initConsts() {
 	VM.consts["RFlonum"] = initRFlonum()
 	VM.consts["RArray"] = initRArray()
 	VM.consts["RHash"] = initRHash()
+	VM.consts["RBoolean"] = initRBoolean()
 	VM.consts["IO"] = initRIO()
 	VM.consts["Thread"] = initRThread()
 }
