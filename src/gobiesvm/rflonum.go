@@ -16,6 +16,7 @@ func initRFlonum() *RObject {
 	obj.methods["-"] = &RMethod{gofunc: RFlonum_sub}
 	obj.methods["*"] = &RMethod{gofunc: RFlonum_mul}
 	obj.methods["/"] = &RMethod{gofunc: RFlonum_div}
+	obj.methods["=="] = &RMethod{gofunc: RFlonum_equal}
 	obj.methods["to_s"] = &RMethod{gofunc: RFlonum_to_s}
 	obj.methods["inspect"] = &RMethod{gofunc: RFlonum_to_s}
 
@@ -118,6 +119,20 @@ func RFlonum_div(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 	obj = RFlonum_new(vm, env, nil, dummy_args).(*RObject)
 
 	return obj
+}
+
+func RFlonum_equal(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	obj := addRObjectToSet(receiver.(*RObject), env)
+	operand_obj := addRObjectToSet(v[0].(*RObject), env)
+
+	// Convert to numeric object to compare, or else return false
+	if operand_obj.class.name == "RFixnum" {
+		return RBoolean_new(vm, env, nil, []Object{obj.val.float == float64(operand_obj.val.fixnum)}).(*RObject)
+	} else if operand_obj.class.name == "RFlonum" {
+		return RBoolean_new(vm, env, nil, []Object{obj.val.float == operand_obj.val.float}).(*RObject)
+	} else {
+		return RBoolean_new(vm, env, nil, []Object{false})
+	}
 }
 
 func RFlonum_to_s(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
