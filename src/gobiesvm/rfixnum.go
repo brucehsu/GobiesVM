@@ -16,6 +16,7 @@ func initRFixnum() *RObject {
 	obj.methods["-"] = &RMethod{gofunc: RFixnum_sub}
 	obj.methods["*"] = &RMethod{gofunc: RFixnum_mul}
 	obj.methods["/"] = &RMethod{gofunc: RFixnum_div}
+	obj.methods["=="] = &RMethod{gofunc: RFixnum_equal}
 	obj.methods["atomic_add"] = &RMethod{gofunc: RFixnum_atomic_add}
 	obj.methods["to_s"] = &RMethod{gofunc: RFixnum_to_s}
 	obj.methods["to_f"] = &RMethod{gofunc: RFixnum_to_f}
@@ -129,6 +130,20 @@ func RFixnum_div(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 	obj = RFixnum_new(vm, env, nil, []Object{obj.val.fixnum / v[0].(*RObject).val.fixnum}).(*RObject)
 
 	return obj
+}
+
+func RFixnum_equal(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
+	obj := addRObjectToSet(receiver.(*RObject), env)
+	operand_obj := addRObjectToSet(v[0].(*RObject), env)
+
+	// Convert to numeric object to compare, or else return false
+	if operand_obj.class.name == "RFixnum" {
+		return RBoolean_new(vm, env, nil, []Object{obj.val.fixnum == operand_obj.val.fixnum}).(*RObject)
+	} else if operand_obj.class.name == "RFlonum" {
+		return RBoolean_new(vm, env, nil, []Object{float64(obj.val.fixnum) == operand_obj.val.float}).(*RObject)
+	} else {
+		return RBoolean_new(vm, env, nil, []Object{false})
+	}
 }
 
 func RFixnum_to_s(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
