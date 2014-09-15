@@ -30,7 +30,7 @@ Options:
 - Variable assignment
 - Integer
 - Float
-- String
+- String (single-quoted)
 - Basic string operations
 - Blocks
 - Iterators
