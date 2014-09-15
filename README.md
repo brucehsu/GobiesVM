@@ -24,3 +24,23 @@ Options:
   -bytecode: Print comprehensive bytecode instructions
   -log: Log transaction status
 ```
+
+# What is supported
+- Object manipulations (creation, method calling)
+- Variable assignment
+- Integer
+- Float
+- String
+- Basic string operations
+- Blocks
+- Iterators
+- Arrays
+- Hashes
+- Threads
+- Basic IO
+
+# What is NOT supported (yet)
+- Conditional statements
+- Class/method definition
+- Native extension interface
+- Rubygems
