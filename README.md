@@ -1,6 +1,8 @@
 GobiesVM
 =====
 
+[![Build Status](https://travis-ci.org/brucehsu/GobiesVM.svg?branch=master)](https://travis-ci.org/brucehsu/GobiesVM)
+
 A Ruby VM written in Go aims to exploit parallelism via Software Transactional Memory.
 
 # Build
