@@ -44,3 +44,6 @@ Options:
 - Class/method definition
 - Native extension interface
 - Rubygems
+
+# Related Paper
+> [Software Transactional Memory in a Dynamic Programming Language at Virtual Machine Level](http://handle.ncl.edu.tw/11296/ndltd/49813811049358903093)
