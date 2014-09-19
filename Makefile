@@ -1,3 +1,6 @@
+BUILDDIR          := ${CURDIR}
+GOPATH            := ${BUILDDIR}
+
 all: dependency build
 
 build:
