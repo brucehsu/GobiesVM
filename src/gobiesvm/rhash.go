@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strconv"
 	"strings"
 )
 
@@ -95,7 +94,7 @@ func RHash_inspect(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Ob
 		if len(key.str) != 0 {
 			valStr[0] = key.str
 		} else { // Currently we only have fixnum
-			valStr[0] = strconv.FormatInt(key.fixnum, 10)
+			valStr[0] = key.fixnum.String()
 		}
 		valStr[1] = val.methodLookup("inspect").gofunc(vm, env, val, nil).(*RObject).val.str
 		strList = append(strList, strings.Join(valStr, "=>"))

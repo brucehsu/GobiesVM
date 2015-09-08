@@ -1,6 +1,9 @@
 package main
 
-import "strconv"
+import (
+	"strconv"
+	"math/big"
+)
 
 func initRFlonum() *RObject {
 	obj := &RObject{}
@@ -63,7 +66,9 @@ func RFlonum_add(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 
 	// Convert if given object is a RFixnum
 	if v[0].(*RObject).class.name == "RFixnum" {
-		num = float64(v[0].(*RObject).val.fixnum)
+		new_rat := new(big.Rat)
+		new_rat.SetString(v[0].(*RObject).val.fixnum.String())
+		num, _ = new_rat.Float64()
 	}
 
 	dummy_args := []Object{obj.val.float + num}
@@ -79,7 +84,9 @@ func RFlonum_sub(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 
 	// Convert if given object is a RFixnum
 	if v[0].(*RObject).class.name == "RFixnum" {
-		num = float64(v[0].(*RObject).val.fixnum)
+		new_rat := new(big.Rat)
+		new_rat.SetString(v[0].(*RObject).val.fixnum.String())
+		num, _ = new_rat.Float64()
 	}
 
 	dummy_args := []Object{obj.val.float - num}
@@ -95,7 +102,9 @@ func RFlonum_mul(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 
 	// Convert if given object is a RFixnum
 	if v[0].(*RObject).class.name == "RFixnum" {
-		num = float64(v[0].(*RObject).val.fixnum)
+		new_rat := new(big.Rat)
+		new_rat.SetString(v[0].(*RObject).val.fixnum.String())
+		num, _ = new_rat.Float64()
 	}
 
 	dummy_args := []Object{obj.val.float * num}
@@ -111,7 +120,9 @@ func RFlonum_div(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 
 	// Convert if given object is a RFixnum
 	if v[0].(*RObject).class.name == "RFixnum" {
-		num = float64(v[0].(*RObject).val.fixnum)
+		new_rat := new(big.Rat)
+		new_rat.SetString(v[0].(*RObject).val.fixnum.String())
+		num, _ = new_rat.Float64()
 	}
 
 	dummy_args := []Object{obj.val.float / num}

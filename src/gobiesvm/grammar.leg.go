@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"math/big"
 )
 
 const END_SYMBOL rune = 4
@@ -1251,8 +1252,8 @@ func (p *Leg) Execute() {
 			yy = currentAST //GLOBAL:0
 		case RuleAction104:
 			currentAST := &AST{Type: NODE_ASTVAL, line: currentLine}
-			tempInt, _ := strconv.Atoi(buffer[begin:end])
-			currentAST.value.numeric = int64(tempInt)
+			currentAST.value.numeric = new(big.Int)
+			currentAST.value.numeric.SetString(buffer[begin:end], 10)
 			yy = currentAST //NUMBER:0
 		case RuleAction105:
 			currentAST := &AST{Type: NODE_ASTVAL, line: currentLine}
@@ -6944,7 +6945,7 @@ func (p *Leg) Init() {
 			}
 			return true
 		},
-		/* 69 Action15 <- <{ stack[stack_idx-1].PushBack(stack[stack_idx-0]); methodAST :=  &AST{Type: NODE_ASTVAL}; methodAST.value.str = "[]="; msgAST := MakeASTNode(NODE_MSG, methodAST, stack[stack_idx-1], nil, currentLine); currentAST = MakeASTNode(NODE_SEND, stack[stack_idx-2], msgAST, nil, currentLine); yy = currentAST; //SpecCall:0 }> */
+		/* 69 Action15 <- <{ stack[stack_idx-1].stack[stack_idx-1][0].PushBack(stack[stack_idx-0]); methodAST :=  &AST{Type: NODE_ASTVAL}; methodAST.value.str = "[]="; msgAST := MakeASTNode(NODE_MSG, methodAST, stack[stack_idx-1], nil, currentLine); currentAST := MakeASTNode(NODE_SEND, stack[stack_idx-2], msgAST, nil, currentLine); yy = currentAST; //SpecCall:0 }> */
 		func() bool {
 			{
 
@@ -7657,7 +7658,7 @@ func (p *Leg) Init() {
 			}
 			return true
 		},
-		/* 159 Action104 <- <{ currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; tempInt, _ := strconv.Atoi(buffer[begin:end]); currentAST.value.numeric = int64(tempInt); yy = currentAST; //NUMBER:0 }> */
+		/* 159 Action104 <- <{ currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.numeric = new(big.Int); currentAST.value.numeric.SetString(buffer[begin:end], 10); yy = currentAST; //NUMBER:0 }> */
 		func() bool {
 			{
 

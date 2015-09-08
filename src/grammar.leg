@@ -262,7 +262,7 @@ ASSIGN    = < '=' > &(!'=')                 { currentAST :=  &AST{Type: NODE_AST
 IVAR      = < '@' NAME >                    { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //IVAR:0 }
 CVAR      = < '@@' NAME >                   { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //CVAR:0 }
 GLOBAL    = < '$' NAME >                    { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //GLOBAL:0 }
-NUMBER    = < [0-9]+ >                      { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; tempInt, _ := strconv.Atoi(buffer[begin:end]); currentAST.value.numeric = int64(tempInt); $$ = currentAST; //NUMBER:0 }
+NUMBER    = < [0-9]+ >                      { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.numeric = new(big.Int); currentAST.value.numeric.SetString(buffer[begin:end], 10); $$ = currentAST; //NUMBER:0 }
 SYMBOL    = ':' < (NAME | KEYWORD) >        { currentAST :=  &AST{Type: NODE_ASTVAL, line: currentLine}; currentAST.value.str = buffer[begin:end]; $$ = currentAST; //SYMBOL:0 }
 
 STRING1   = '\''                            { parseStr = make([]string, 12) //STRING1:0 STRING_START }

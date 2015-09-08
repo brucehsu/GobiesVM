@@ -1,5 +1,7 @@
 package main
 
+import "math/big"
+
 type NodeType uint8
 
 // Resembles TinyRb AST node types
@@ -101,7 +103,7 @@ var node_type_str = [...]string{
 
 type ASTVal struct {
 	str     string
-	numeric int64
+	numeric *big.Int
 }
 
 type AST struct {

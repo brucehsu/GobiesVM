@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"math/big"
 )
 
 func initRKernel() *RObject {
@@ -53,5 +54,5 @@ func RKernel_p(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object
 }
 
 func RKernel_rand(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
-	return RFixnum_new(vm, env, nil, []Object{rand.Int63n(v[0].(*RObject).val.fixnum)})
+	return RFixnum_new(vm, env, nil, []Object{big.NewInt(rand.Int63n(v[0].(*RObject).val.fixnum.Int64()))})
 }

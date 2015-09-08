@@ -77,7 +77,7 @@ func RArray_at(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object
 	new_obj := env.transactionPC.objectSet[obj] // Update object address
 	internal_array := new_obj.ivars["array"].([]*RObject)
 
-	idx := v[0].(*RObject).val.fixnum
+	idx := v[0].(*RObject).val.fixnum.Int64()
 
 	orig_val := internal_array[idx]
 
@@ -94,7 +94,7 @@ func RArray_assign_to_index(vm *GobiesVM, env *ThreadEnv, receiver Object, v []O
 
 	internal_array := new_obj.ivars["array"].([]*RObject)
 
-	idx := v[0].(*RObject).val.fixnum
+	idx := v[0].(*RObject).val.fixnum.Int64()
 	val := v[1].(*RObject)
 	orig_val := internal_array[idx]
 	addRObjectToSet(orig_val, env)
