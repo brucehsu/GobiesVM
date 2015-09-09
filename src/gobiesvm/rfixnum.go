@@ -32,7 +32,7 @@ func initRFixnum() *RObject {
 func RFixnum_new(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	val := big.NewInt(0)
 	if len(v) == 1 {
-		val = v[0].(*big.Int)
+		val.Add(val, v[0].(*big.Int))
 	}
 
 	obj := &RObject{}
