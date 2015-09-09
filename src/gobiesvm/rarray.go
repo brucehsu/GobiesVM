@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"strings"
+	"math/big"
+)
 
 func initRArray() *RObject {
 	obj := &RObject{}
@@ -136,7 +139,7 @@ func RArray_length(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Ob
 	obj := addRObjectToSet(receiver.(*RObject), env)
 	internal_array := obj.ivars["array"].([]*RObject)
 
-	length := []Object{int64(len(internal_array))}
+	length := []Object{big.NewInt(int64(len(internal_array)))}
 
 	return RFixnum_new(vm, env, receiver, length)
 }
