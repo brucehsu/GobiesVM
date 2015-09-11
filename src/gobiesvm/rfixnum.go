@@ -1,6 +1,8 @@
 package main
 
-import "strconv"
+import (
+	"math/big"
+)
 
 func initRFixnum() *RObject {
 	obj := &RObject{}
@@ -28,9 +30,9 @@ func initRFixnum() *RObject {
 // Fixnum.new(int=0)
 // v = [int64]
 func RFixnum_new(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
-	val := int64(0)
+	val := big.NewInt(0)
 	if len(v) == 1 {
-		val = v[0].(int64)
+		val.Add(val, v[0].(*big.Int))
 	}
 
 	obj := &RObject{}
@@ -54,21 +56,25 @@ func RFixnum_assign(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) O
 		env.transactionPC.objectSet[obj] = new_obj
 	}
 
-	new_obj.val.fixnum = v[0].(*RObject).val.fixnum
+	new_int := big.NewInt(0)
+	new_obj.val.fixnum = new_int.Add(new_int, v[0].(*RObject).val.fixnum)
 
 	return obj
 }
 
 func RFixnum_add(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
-	dummy_args := []Object{obj.val.fixnum + v[0].(*RObject).val.fixnum}
 
 	// Convert to RFlonum if the second operand is RFlonum
 	if v[0].(*RObject).class.name == "RFlonum" {
-		dummy_args[0] = float64(obj.val.fixnum) + (v[0].(*RObject).val.float)
+		new_rat := new(big.Rat)
+		new_rat.SetString(obj.val.fixnum.String())
+		f, _ := new_rat.Float64()
+		dummy_args := []Object{f + v[0].(*RObject).val.float}
 		return RFlonum_new(vm, env, nil, dummy_args).(*RObject)
 	}
 
+	dummy_args := []Object{big.NewInt(0).Add(obj.val.fixnum, v[0].(*RObject).val.fixnum)}
 	obj = RFixnum_new(vm, env, nil, dummy_args).(*RObject)
 
 	return obj
@@ -79,24 +85,28 @@ func RFixnum_atomic_add(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Objec
 	new_obj := env.transactionPC.objectSet[obj]
 
 	if obj == new_obj {
-		new_obj = RFixnum_new(vm, env, nil, []Object{obj.val.fixnum}).(*RObject)
+		new_int := big.NewInt(0)
+		new_obj = RFixnum_new(vm, env, nil, []Object{new_int.Add(new_int, obj.val.fixnum)}).(*RObject)
 		env.transactionPC.objectSet[obj] = new_obj
 	}
-	new_obj.val.fixnum += v[0].(*RObject).val.fixnum
+	new_obj.val.fixnum.Add(new_obj.val.fixnum, v[0].(*RObject).val.fixnum)
 
 	return obj
 }
 
 func RFixnum_sub(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
-	dummy_args := []Object{obj.val.fixnum - v[0].(*RObject).val.fixnum}
 
 	// Convert to RFlonum if the second operand is RFlonum
 	if v[0].(*RObject).class.name == "RFlonum" {
-		dummy_args[0] = float64(obj.val.fixnum) - (v[0].(*RObject).val.float)
+		new_rat := new(big.Rat)
+		new_rat.SetString(obj.val.fixnum.String())
+		f, _ := new_rat.Float64()
+		dummy_args := []Object{f - v[0].(*RObject).val.float}
 		return RFlonum_new(vm, env, nil, dummy_args).(*RObject)
 	}
 
+	dummy_args := []Object{big.NewInt(0).Sub(obj.val.fixnum, v[0].(*RObject).val.fixnum)}
 	obj = RFixnum_new(vm, env, nil, dummy_args).(*RObject)
 
 	return obj
@@ -104,14 +114,17 @@ func RFixnum_sub(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 
 func RFixnum_mul(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
-	dummy_args := []Object{obj.val.fixnum * v[0].(*RObject).val.fixnum}
 
 	// Convert to RFlonum if the second operand is RFlonum
 	if v[0].(*RObject).class.name == "RFlonum" {
-		dummy_args[0] = float64(obj.val.fixnum) * (v[0].(*RObject).val.float)
+		new_rat := new(big.Rat)
+		new_rat.SetString(obj.val.fixnum.String())
+		f, _ := new_rat.Float64()
+		dummy_args := []Object{f * v[0].(*RObject).val.float}
 		return RFlonum_new(vm, env, nil, dummy_args).(*RObject)
 	}
 
+	dummy_args := []Object{big.NewInt(0).Mul(obj.val.fixnum, v[0].(*RObject).val.fixnum)}
 	obj = RFixnum_new(vm, env, nil, dummy_args).(*RObject)
 
 	return obj
@@ -123,22 +136,28 @@ func RFixnum_div(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obje
 	// Abandon dummy_args pre-declaration cause it may trigger divide by zero
 	// Convert to RFlonum if the second operand is RFlonum
 	if v[0].(*RObject).class.name == "RFlonum" {
-		return RFlonum_new(vm, env, nil, []Object{float64(obj.val.fixnum) / (v[0].(*RObject).val.float)}).(*RObject)
+		new_rat := new(big.Rat)
+		new_rat.SetString(obj.val.fixnum.String())
+		f, _ := new_rat.Float64()
+		return RFlonum_new(vm, env, nil, []Object{f / v[0].(*RObject).val.float}).(*RObject)
 	}
 
-	obj = RFixnum_new(vm, env, nil, []Object{obj.val.fixnum / v[0].(*RObject).val.fixnum}).(*RObject)
+	obj = RFixnum_new(vm, env, nil, []Object{big.NewInt(0).Div(obj.val.fixnum, v[0].(*RObject).val.fixnum)}).(*RObject)
 
 	return obj
 }
 
 func RFixnum_to_s(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
-	return RString_new(vm, env, nil, []Object{strconv.FormatInt(obj.val.fixnum, 10)})
+	return RString_new(vm, env, nil, []Object{obj.val.fixnum.String()})
 }
 
 func RFixnum_to_f(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
-	return RFlonum_new(vm, env, nil, []Object{float64(obj.val.fixnum)})
+	new_rat := new(big.Rat)
+	new_rat.SetString(obj.val.fixnum.String())
+	f, _ := new_rat.Float64()
+	return RFlonum_new(vm, env, nil, []Object{f})
 }
 
 // RFixnum.times(&block)
@@ -150,12 +169,13 @@ func RFixnum_times(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Ob
 	if v != nil && len(v) == 1 { // Given a single RBlock
 		block := v[0].(*RObject)
 
-		dummy_args := []Object{0}
 		params := []*RObject{nil}
 
-		for i := int64(0); i < obj.val.fixnum; i++ {
+		for i := big.NewInt(0); i.Cmp(obj.val.fixnum) == -1; i.Add(i, big.NewInt(1)) {
 			// Prepare block arguments
-			dummy_args[0] = i
+			new_int := big.NewInt(0)			
+			dummy_args := []Object{new_int}
+			dummy_args[0] = new_int.Add(new_int, i)
 			params[0] = RFixnum_new(vm, nil, nil, dummy_args).(*RObject)
 
 			// Let VM handle all other stuff such as clean call frame
