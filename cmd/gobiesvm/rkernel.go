@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"math/rand"
 	"math/big"
+	"math/rand"
 )
 
 func initRKernel() *RObject {
@@ -27,11 +26,19 @@ func (obj *RObject) initRKernelMethods() {
 
 // Irreversible IO functions
 func RKernel_puts(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
-	vm.transactionEnd(env)
+	if vm.transactionEnd(env) == false {
+		return nil
+	}
 
+	vm.stateLock.RLock()
+	lines := make([]string, 0, len(v))
 	for _, obj := range v {
 		robj := obj.(*RObject)
-		fmt.Println(robj.methodLookup("to_s").gofunc(vm, nil, robj, nil).(*RObject).val.str)
+		lines = append(lines, robj.methodLookup("to_s").gofunc(vm, nil, robj, nil).(*RObject).val.str)
+	}
+	vm.stateLock.RUnlock()
+	for _, line := range lines {
+		vm.println(line)
 	}
 
 	// Begin empty transaction
@@ -40,11 +47,19 @@ func RKernel_puts(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Obj
 }
 
 func RKernel_p(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
-	vm.transactionEnd(env)
+	if vm.transactionEnd(env) == false {
+		return nil
+	}
 
+	vm.stateLock.RLock()
+	lines := make([]string, 0, len(v))
 	for _, obj := range v {
 		robj := obj.(*RObject)
-		fmt.Println(robj.methodLookup("inspect").gofunc(vm, nil, robj, nil).(*RObject).val.str)
+		lines = append(lines, robj.methodLookup("inspect").gofunc(vm, nil, robj, nil).(*RObject).val.str)
+	}
+	vm.stateLock.RUnlock()
+	for _, line := range lines {
+		vm.println(line)
 	}
 
 	// Begin empty transaction

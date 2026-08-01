@@ -1,8 +1,8 @@
 package main
 
 import (
-	"strings"
 	"math/big"
+	"strings"
 )
 
 func initRArray() *RObject {

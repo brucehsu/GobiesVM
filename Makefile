@@ -1,18 +1,27 @@
-BUILDDIR          := ${CURDIR}
-GOPATH            := ${BUILDDIR}
+BINARY := bin/gobiesvm
+PACKAGE := ./cmd/gobiesvm
 
-all: dependency build
+.PHONY: all build test race vet vuln check clean
+
+all: build
 
 build:
-	cd bin ; go build -x gobiesvm
+	mkdir -p bin
+	go build -trimpath -o $(BINARY) $(PACKAGE)
 
-goenv:
-	wget https://raw.githubusercontent.com/c9s/goenv/master/goenv
+test:
+	go test ./...
 
-dependency:
-	go get github.com/kr/try
+race:
+	go test -race ./...
+
+vet:
+	go vet ./...
+
+vuln:
+	go tool govulncheck ./...
+
+check: vet test race vuln build
 
 clean:
-	rm goenv
-	rm bin/*
-	rm -rf vendor
+	rm -f $(BINARY)

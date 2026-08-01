@@ -1,8 +1,8 @@
 package main
 
 import (
-	"strconv"
 	"math/big"
+	"strconv"
 )
 
 func initRFlonum() *RObject {

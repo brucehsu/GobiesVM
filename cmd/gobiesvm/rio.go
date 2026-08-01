@@ -1,7 +1,8 @@
 package main
 
 import (
-	"io/ioutil"
+	"fmt"
+	"os"
 	"strings"
 )
 
@@ -21,13 +22,23 @@ func initRIO() *RObject {
 // IO.readlines(filename)
 // [RString]
 func RIO_readlines(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
-	vm.transactionEnd(env)
+	if vm.transactionEnd(env) == false {
+		return nil
+	}
 
+	vm.stateLock.RLock()
 	filename := v[0].(*RObject).val.str
+	vm.stateLock.RUnlock()
 
-	content, _ := ioutil.ReadFile(filename)
-	str := string(content[:])
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		vm.recordError(fmt.Errorf("IO.readlines %q: %w", filename, err))
+		vm.transactionBegin(env, []Instruction{})
+		return nil
+	}
+	str := string(content)
 
+	vm.stateLock.RLock()
 	items := []Object{}
 	dummy_obj := []Object{nil}
 
@@ -39,6 +50,7 @@ func RIO_readlines(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Ob
 	}
 
 	obj := RArray_new(vm, nil, receiver, items)
+	vm.stateLock.RUnlock()
 
 	// Begin empty transaction
 	vm.transactionBegin(env, []Instruction{})

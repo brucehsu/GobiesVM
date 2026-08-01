@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"math/big"
+	"strings"
+)
 
 func initRString() *RObject {
 	obj := &RObject{}
@@ -21,7 +24,7 @@ func initRString() *RObject {
 	return obj
 }
 
-// String.new(str='')
+// String.new(str=”)
 // v = [string]
 func RString_new(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	str := ""
@@ -62,9 +65,7 @@ func RString_inspect(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) 
 
 func RString_length(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {
 	obj := addRObjectToSet(receiver.(*RObject), env)
-	arg := make([]Object, 1, 1)
-	arg[0] = int64(len(obj.val.str))
-	return RFixnum_new(vm, env, receiver, arg)
+	return RFixnum_new(vm, env, receiver, []Object{big.NewInt(int64(len(obj.val.str)))})
 }
 
 func RString_split(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Object {

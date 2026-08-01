@@ -1,11 +1,15 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"io"
+	"maps"
+	"math/big"
+	"slices"
 	"sync"
 	"sync/atomic"
 )
-
-var wg sync.WaitGroup
 
 type CallFrame struct {
 	parent    *CallFrame
@@ -20,7 +24,6 @@ type Transaction struct {
 	objectSet        map[*RObject]*RObject
 	transactionStack []*CallFrame
 	env              *ThreadEnv
-	inevitable       bool
 	rev              int64
 }
 
@@ -37,12 +40,19 @@ type GobiesVM struct {
 	consts         map[string]*RObject
 	symbols        map[string]int
 	rev            int64
-	globalLock     sync.RWMutex
-	has_inevitable int32
+	stateLock      sync.RWMutex
+	wg             sync.WaitGroup
+	errLock        sync.Mutex
+	errs           []error
+	failed         atomic.Bool
+	outLock        sync.Mutex
+	out            io.Writer
+	logTransaction bool
+	stats          *transactionStats
 }
 
-func initVM() *GobiesVM {
-	VM := &GobiesVM{}
+func initVM(out io.Writer, logTransaction bool, stats *transactionStats) *GobiesVM {
+	VM := &GobiesVM{out: out, logTransaction: logTransaction, stats: stats}
 	top := initCallFrame()
 	VM.callFrameStack = append(VM.callFrameStack, top)
 	VM.consts = make(map[string]*RObject)
@@ -50,6 +60,34 @@ func initVM() *GobiesVM {
 	VM.symbols = make(map[string]int)
 	top.me = initRKernel()
 	return VM
+}
+
+func (VM *GobiesVM) recordError(err error) {
+	if err == nil {
+		return
+	}
+	VM.failed.Store(true)
+	VM.errLock.Lock()
+	VM.errs = append(VM.errs, err)
+	VM.errLock.Unlock()
+}
+
+func (VM *GobiesVM) hasErrors() bool {
+	return VM.failed.Load()
+}
+
+func (VM *GobiesVM) abortTransaction(env *ThreadEnv) {
+	if env.transactionPC == nil {
+		return
+	}
+	VM.stateLock.RUnlock()
+	env.transactionPC = nil
+}
+
+func (VM *GobiesVM) println(values ...any) {
+	VM.outLock.Lock()
+	defer VM.outLock.Unlock()
+	fmt.Fprintln(VM.out, values...)
 }
 
 func initCallFrame() *CallFrame {
@@ -159,30 +197,46 @@ func copyFrames(src []*CallFrame, initThread bool) []*CallFrame {
 func (obj *RObject) copyObjectFrom(src *RObject) {
 	obj.class = src.class
 	obj.rev = src.rev
-	obj.val = src.val
+	obj.name = src.name
+	obj.val = cloneRValue(src.val)
 	obj.blockVar = src.blockVar
-	// Copy instance variables
-	ivars := src.ivars
-	for k, v := range ivars {
-		obj.ivars[k] = v
-	}
-	obj.val = src.val
+	obj.ivars = cloneIvars(src.ivars)
+	obj.methods = maps.Clone(src.methods)
 }
 
 func (obj *RObject) copyObject() *RObject {
-	new_obj := &RObject{}
-	new_obj.class = obj.class
-	new_obj.rev = obj.rev
-	new_obj.val = obj.val
-	new_obj.blockVar = obj.blockVar
-	new_obj.ivars = make(map[string]Object)
-	new_obj.methods = make(map[string]*RMethod)
-
-	ivars := obj.ivars
-	for k, v := range ivars {
-		new_obj.ivars[k] = v
+	return &RObject{
+		class:    obj.class,
+		methods:  maps.Clone(obj.methods),
+		name:     obj.name,
+		val:      cloneRValue(obj.val),
+		rev:      obj.rev,
+		ivars:    cloneIvars(obj.ivars),
+		blockVar: obj.blockVar,
 	}
-	return new_obj
+}
+
+func cloneRValue(value RValue) RValue {
+	cloned := value
+	if value.fixnum != nil {
+		cloned.fixnum = new(big.Int).Set(value.fixnum)
+	}
+	return cloned
+}
+
+func cloneIvars(ivars map[string]Object) map[string]Object {
+	cloned := make(map[string]Object, len(ivars))
+	for key, value := range ivars {
+		switch value := value.(type) {
+		case []*RObject:
+			cloned[key] = slices.Clone(value)
+		case map[RValue]*RObject:
+			cloned[key] = maps.Clone(value)
+		default:
+			cloned[key] = value
+		}
+	}
+	return cloned
 }
 
 func addRObjectToSet(obj *RObject, env *ThreadEnv) *RObject {
@@ -195,19 +249,19 @@ func addRObjectToSet(obj *RObject, env *ThreadEnv) *RObject {
 	return obj
 }
 
-func (VM *GobiesVM) execute() {
-	// 	root := initTransaction(VM.instList)
-	// 	root.inevitable = true
-
+func (VM *GobiesVM) execute() error {
 	VM.rev = 0
 
-	// Execute root transaction which is inevitable
 	VM.executeThread(VM.instList, nil)
-	wg.Wait()
+	VM.wg.Wait()
+
+	VM.errLock.Lock()
+	defer VM.errLock.Unlock()
+	return errors.Join(VM.errs...)
 }
 
 func (VM *GobiesVM) executeThread(instList []Instruction, parentScope *ThreadEnv) {
-	VM.globalLock.Lock()
+	VM.stateLock.RLock()
 	// Create clean call frame without pushing back to VM stack
 	currentCallFrame := initCallFrame()
 	env := &ThreadEnv{instList: instList}
@@ -218,113 +272,78 @@ func (VM *GobiesVM) executeThread(instList []Instruction, parentScope *ThreadEnv
 		currentCallFrame.parent = env.threadStack[len(env.threadStack)-1]
 		// currentCallFrame.parent = parentScope.threadStack[len(parentScope.threadStack)-1]
 	}
-	VM.globalLock.Unlock()
+	VM.stateLock.RUnlock()
 
 	currentCallFrame.me = currentCallFrame.parent.me
 	env.threadStack = append(env.threadStack, currentCallFrame)
 
-	// t.inevitable = true
 	VM.executeBytecodes(nil, env)
-	if parentScope != nil {
-		wg.Done()
-	}
 }
 
 func (VM *GobiesVM) transactionBegin(env *ThreadEnv, inst []Instruction) *Transaction {
+	if env.transactionPC != nil {
+		return env.transactionPC
+	}
+
 	t := &Transaction{}
 	t.initTransaction(env, inst)
 
-	VM.globalLock.Lock()
-	t.rev = atomic.LoadInt64(&VM.rev)
+	VM.stateLock.RLock()
+	t.rev = VM.rev
 	env.transactionPC = t
 	t.env = env
-	VM.globalLock.Unlock()
 
 	return t
 }
 
 func (VM *GobiesVM) transactionEnd(env *ThreadEnv) bool {
 	t := env.transactionPC
-	locked := []*RObject{}
-	rev := t.rev
+	if t == nil {
+		return true
+	}
+
+	VM.stateLock.RUnlock()
+	VM.stateLock.Lock()
+	rev := int64(0)
 
 	// Validate the read-set
-	for orig_obj, _ := range t.objectSet {
+	for orig_obj := range t.objectSet {
 		if orig_obj.rev > t.rev {
-			// Retry
-			if log_transaction {
-				atomic.AddInt32(&log_status[LOG_COMMIT_VALID_READ], 1)
+			VM.stateLock.Unlock()
+			if VM.logTransaction {
+				VM.stats.status[LOG_COMMIT_VALID_READ].Add(1)
 			}
 			goto TRANSACTION_RETRY
 		}
 	}
 
-	// Lock the write-set
-	for orig_obj, new_obj := range t.objectSet {
-		if orig_obj != new_obj {
-			if orig_obj.writeLock.TryLock() {
-				locked = append(locked, orig_obj)
-			} else { // Attempt to acquire lock failed
-				// Release all locks
-				for _, locked_obj := range locked {
-					locked_obj.writeLock.Unlock()
-				}
-				// Retry
-				if log_transaction {
-					atomic.AddInt32(&log_status[LOG_COMMIT_LOCK_WRITE], 1)
-				}
-				goto TRANSACTION_RETRY
+	VM.rev++
+	rev = VM.rev
 
-			}
+	// Publish transaction-local copies while no speculative reader can observe
+	// partially committed object state.
+	for original, local := range t.objectSet {
+		if original != local {
+			original.copyObjectFrom(local)
+			original.rev = rev
 		}
 	}
 
-	VM.globalLock.Lock()
-	// Increment global revision
-	for !atomic.CompareAndSwapInt64(&VM.rev, VM.rev, VM.rev+1) {
-	}
-	rev = atomic.LoadInt64(&VM.rev)
-
-	// Re-validate the read-set
-	for orig_obj, _ := range t.objectSet {
-		if orig_obj.rev > t.rev {
-			// Release write locks
-			for _, locked_obj := range locked {
-				locked_obj.writeLock.Unlock()
-			}
-			VM.globalLock.Unlock()
-			// Retry
-			if log_transaction {
-				atomic.AddInt32(&log_status[LOG_COMMIT_REVALID_READ], 1)
-			}
-			goto TRANSACTION_RETRY
-		}
-	}
-
-	// Commit then release the locks
-	for _, locked_obj := range locked {
-		src := t.objectSet[locked_obj]
-		locked_obj.copyObjectFrom(src)
-		locked_obj.rev = rev
-		locked_obj.writeLock.Unlock()
-	}
-
-	VM.globalLock.Unlock()
+	VM.stateLock.Unlock()
 
 	env.threadStack = copyFrames(t.transactionStack, false)
 	env.transactionPC = nil
 
-	if log_transaction {
-		atomic.AddInt32(&log_status[LOG_COMMIT_SUCCESS], 1)
+	if VM.logTransaction {
+		VM.stats.status[LOG_COMMIT_SUCCESS].Add(1)
 	}
 
 	return true
 
 TRANSACTION_RETRY:
 	t.initTransaction(env, t.instList)
-	VM.globalLock.Lock()
-	t.rev = atomic.LoadInt64(&VM.rev)
-	VM.globalLock.Unlock()
+	VM.stateLock.RLock()
+	t.rev = VM.rev
 	VM.executeBytecodes(t.instList, env)
 	return false
 }
@@ -339,16 +358,20 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 	// SPECULATIVE_EXEC:
 	// Speculative execution
 	for i, v := range instList {
+		if VM.hasErrors() {
+			VM.abortTransaction(env)
+			return
+		}
 		t = env.transactionPC
 		if t == nil {
 			t = VM.transactionBegin(env, instList[i:])
 		}
 		// Validate the read-set
-		for orig_obj, _ := range t.objectSet {
-			if orig_obj.rev > t.rev || orig_obj.writeLock.TryLock() {
+		for orig_obj := range t.objectSet {
+			if orig_obj.rev > t.rev {
 				// Retry
-				if log_transaction {
-					atomic.AddInt32(&log_status[LOG_EXEC_VALID_READ], 1)
+				if VM.logTransaction {
+					VM.stats.status[LOG_EXEC_VALID_READ].Add(1)
 				}
 				goto TRANSACTION_RETRY
 			}
@@ -392,7 +415,11 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 		case BC_SETCONST:
 		case BC_GETCONST:
 			if v.obj.(string) == "Join" {
-				wg.Wait()
+				if VM.transactionEnd(env) == false {
+					return
+				}
+				VM.wg.Wait()
+				VM.transactionBegin(env, []Instruction{})
 			} else {
 				currentCallFrame.stack = append(currentCallFrame.stack, VM.consts[v.obj.(string)])
 			}
@@ -406,6 +433,10 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 			recv := argLists[0].(*RObject)
 			argLists = argLists[1:]
 			return_val := recv.methodLookup(v.obj.(string)).gofunc(VM, env, recv, argLists)
+			if VM.hasErrors() {
+				VM.abortTransaction(env)
+				return
+			}
 			// Update address since some functions might init new transaction
 			currentCallFrame = env.transactionPC.transactionStack[len(env.transactionPC.transactionStack)-1]
 			if return_val != nil {
@@ -425,10 +456,10 @@ func (VM *GobiesVM) executeBytecodes(instList []Instruction, env *ThreadEnv) {
 	return
 
 TRANSACTION_RETRY:
+	VM.stateLock.RUnlock()
 	t.initTransaction(env, t.instList)
-	VM.globalLock.Lock()
-	t.rev = atomic.LoadInt64(&VM.rev)
-	VM.globalLock.Unlock()
+	VM.stateLock.RLock()
+	t.rev = VM.rev
 	VM.executeBytecodes(t.instList, env)
 }
 
@@ -437,6 +468,8 @@ func (VM *GobiesVM) executeBlock(env *ThreadEnv, block *RObject, args []*RObject
 		VM.transactionEnd(env)
 	}
 
+	VM.stateLock.RLock()
+	definition := slices.Clone(block.methods["def"].def)
 	// Create clean call frame
 	currentCallFrame := initCallFrame()
 	currentCallFrame.parent = env.threadStack[len(env.threadStack)-1]
@@ -452,11 +485,12 @@ func (VM *GobiesVM) executeBlock(env *ThreadEnv, block *RObject, args []*RObject
 			currentCallFrame.var_table[var_name].(*RObject).blockVar = true
 		}
 	}
+	VM.stateLock.RUnlock()
 
-	VM.transactionBegin(env, block.methods["def"].def)
+	VM.transactionBegin(env, definition)
 
 	// Execute block definition
-	VM.executeBytecodes(block.methods["def"].def, env)
+	VM.executeBytecodes(definition, env)
 	env.threadStack = env.threadStack[0 : len(env.threadStack)-1]
 
 	VM.transactionBegin(env, []Instruction{})

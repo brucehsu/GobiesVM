@@ -173,7 +173,7 @@ func RFixnum_times(vm *GobiesVM, env *ThreadEnv, receiver Object, v []Object) Ob
 
 		for i := big.NewInt(0); i.Cmp(obj.val.fixnum) == -1; i.Add(i, big.NewInt(1)) {
 			// Prepare block arguments
-			new_int := big.NewInt(0)			
+			new_int := big.NewInt(0)
 			dummy_args := []Object{new_int}
 			dummy_args[0] = new_int.Add(new_int, i)
 			params[0] = RFixnum_new(vm, nil, nil, dummy_args).(*RObject)

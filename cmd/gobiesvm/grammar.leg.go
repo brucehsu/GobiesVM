@@ -1,31 +1,34 @@
+// Code generated from grammar.leg; DO NOT EDIT.
+
 package main
 
 import (
 	/*"bytes"*/
 	"fmt"
+	"io"
 	"math"
+	"math/big"
 	"sort"
 	"strconv"
 	"strings"
-	"math/big"
 )
 
 const END_SYMBOL rune = 4
 
 var traverse_level int = 0
 
-func Traverse(root *AST) {
+func Traverse(out io.Writer, root *AST) {
 	for i := 0; i < traverse_level; i++ {
-		fmt.Printf("  ")
+		fmt.Fprint(out, "  ")
 	}
 	traverse_level += 1
-	fmt.Printf("%s: %+v\n", node_type_str[root.Type], root)
+	fmt.Fprintf(out, "%s: %+v\n", node_type_str[root.Type], root)
 
 	root_head := root.head
 
 	for idx, _ := range root.args {
 		if root.args[idx] != nil {
-			Traverse(root.args[idx])
+			Traverse(out, root.args[idx])
 		}
 	}
 
@@ -35,7 +38,7 @@ func Traverse(root *AST) {
 	}
 	root_head = root_head.next
 	for root_head != nil {
-		Traverse(root_head)
+		Traverse(out, root_head)
 		root_head = root_head.next
 	}
 
